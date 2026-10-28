@@ -12,7 +12,7 @@ const signal = new AbortController().signal
 const run = await provider.start({
   label: 'smoke',
   prompt: [{ type: 'text', text: '用一句话回答：2+3 等于几？不要使用任何工具。' }],
-  parent: { session: { meta: { cwd: 'C:/Users/Administrator/Desktop/dsh-workspace/space-1' } } },
+  parent: { session: { meta: { cwd: process.cwd() } } },
   signal,
 })
 

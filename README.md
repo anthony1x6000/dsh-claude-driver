@@ -24,7 +24,7 @@ Then restart `dsh web`, open the model picker and choose a model under **Claude 
 
 Local development: `npm install && npm test`, then `dsh plugin --profile web add link:/path/to/dsh-claude-driver`.
 
-The manual, Windows-oriented install notes further down are kept for reference.
+Linux is the supported platform; CI runs on Ubuntu only.
 
 ---
 
@@ -50,7 +50,7 @@ DSH（DeepSeek Harness）宿主插件：让 DSH 会话把**本地 Claude Code �
 | resume 链治理 | 模型带 contextWindow（启用 DSH 自动压缩）+ 压缩后清链 + `/claude-fresh` 命令 |
 | 后台任务保活 | `waitForBackgroundTasks`：持有本步直到 Claude Code 自己的后台任务跑完，否则它们会在回合结束后被杀 |
 | 子代理抢救 | `harvestOrphanedSubagents`：随进程一起死掉的子代理，下一轮从磁盘 transcript 捞回它们的产出 |
-| 可执行文件回退 | SDK 原生二进制缺失时回退到全局 `claude.exe` |
+| 可执行文件回退 | SDK 原生二进制缺失时回退到全局 `claude`（`~/.local/bin/claude`） |
 
 ## 子代理抢救（harvestOrphanedSubagents）
 
@@ -91,7 +91,7 @@ harvestOrphanedSubagents: true    # 默认；false 完全关闭
 
 **长任务规范**（`deploy/长任务规范.md`）：凡超过 1 分钟的任务禁止用当前会话 shell 起
 后台任务（会话/进程重启即丢失且无完成记录），必须用 `claude_code` 委派
-（`run_in_background`）或 `Start-Process` 独立进程 + 日志落盘。规则同时落在
+（`run_in_background`）或 `nohup`/`setsid` 独立进程 + 日志落盘。规则同时落在
 `~/.dsh/.agent-presets/<preset>/agent.cordis.yml` persona 与 `~/.claude/CLAUDE.md`，
 对 DSH 主模型与被委派的 Claude Code 双侧强制。
 
@@ -277,12 +277,12 @@ CLI 进程先拉起来晾着——4s 初始化全部发生在用户阅读上一�
 
 设置方式（任选其一，都会透传给本插件拉起的 Claude Code 子进程）：
 
-```powershell
-# 1) Windows 用户级环境变量（推荐，重启 DSH 生效）
-setx ENABLE_PROMPT_CACHING_1H 1
+```sh
+# 1) 写入 shell 配置（推荐，重启 DSH 生效）
+echo 'export ENABLE_PROMPT_CACHING_1H=1' >> ~/.profile
 
 # 2) 当前 shell 一次性（仅本次会话）
-$env:ENABLE_PROMPT_CACHING_1H = "1"
+export ENABLE_PROMPT_CACHING_1H=1
 
 # 3) 或在 ~/.claude/settings.json 的 "env" 块里：
 #    { "env": { "ENABLE_PROMPT_CACHING_1H": "1" } }
@@ -303,7 +303,7 @@ Claude 的模型别名（`fable`/`sonnet`/`opus`/`haiku`）指向各自家族**�
 
 - **版本升级（如 Fable 5.1）**：`fable` 别名自动跟随，**无需任何改动**。
 - **全新模型家族**：升级 SDK 并重启 DSH 即自动出现在选择器——
-  ```powershell
+  ```sh
   dsh plugin --profile desktop up @anthropic-ai/claude-agent-sdk
   # 然后重启 DSH
   ```
@@ -319,28 +319,19 @@ Claude 的模型别名（`fable`/`sonnet`/`opus`/`haiku`）指向各自家族**�
 - Claude 订阅 + `claude` CLI 可用（或 SDK 的平台二进制包）
 - **出网 IP 是数据中心 IP 时需要代理**（Anthropic 会 403），如 `http://127.0.0.1:7897`
 
-## 安装（其他电脑）
+## 安装（手动，Linux）
 
-### 1. 放置插件并装依赖
+推荐直接用上面的 `dsh plugin add`。手动安装：
 
-```powershell
-# 克隆到任意目录
-git clone <你的仓库地址> dsh-claude-driver
-
-# 放进共享 profile 的 node_modules
-# 重要：绝不要在 profiles/node_modules/ 根目录跑 npm i ——
-#       会把 dsh 自管理的 junction 当"多余包"剪掉导致 dsh 无法启动。
-Copy-Item -Recurse dsh-claude-driver "$env:USERPROFILE\.dsh\profiles\node_modules\dsh-claude-driver"
-
-# 在插件自己的目录里装依赖（SDK + zod 落到 dsh-claude-driver/node_modules，不动共享根）
-cd "$env:USERPROFILE\.dsh\profiles\node_modules\dsh-claude-driver"
-npm i --no-save
+```sh
+git clone https://github.com/anthony1x6000/dsh-claude-driver.git
+cp -r dsh-claude-driver ~/.dsh/profiles/node_modules/dsh-claude-driver
+# 绝不要在 profiles/node_modules/ 根目录跑 npm i（会剪掉 dsh 自管理的链接）
+cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 ```
 
-### 2. 写入宿主补丁
-
-把 `deploy/cordis.patch.yml` 的内容合并进 `~/.dsh/profiles/<profile>/cordis.patch.yml`
-（DSH Desktop 应用用 `desktop` profile；`dsh web` CLI 用 `web`）。**把 `proxy` 改成你本机的代理地址**。
+把 `cordis.patch.yml` 合并进 `~/.dsh/profiles/<profile>/cordis.patch.yml`
+（`dsh web` 用 `web` profile）。数据中心 IP 需自行设置 `proxy`。
 
 ### 3. 启用 subagent 工具 + 唤醒插件（可选但推荐）
 
@@ -425,7 +416,7 @@ npm i --no-save
 
 需代理 + Claude 登录。`npm i --no-save` 后：
 
-```powershell
+```sh
 node test-run.mjs                 # 文本 + 工具桥接
 node test-subagent-provider.mjs   # subagent provider（真实 SDK）
 node test-resume-smoke.mjs        # resume 续接（真实 SDK 两连发）

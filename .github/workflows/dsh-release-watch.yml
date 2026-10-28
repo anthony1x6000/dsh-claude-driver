@@ -1,0 +1,49 @@
+name: dsh-release-watch
+
+# Polls npm for new @deepseek-ai/dsh releases and re-runs ci.yml once per new
+# version, so the driver is re-tested on every DSH release even when DSH does
+# not notify this repository. The last-tested version lives in the Actions cache.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read last-tested DSH versions
+        uses: actions/cache/restore@v4
+        with:
+          path: dsh-seen.txt
+          key: dsh-seen-${{ github.run_id }}
+          restore-keys: dsh-seen-
+      - name: Find releases not yet tested
+        id: detect
+        run: |
+          touch dsh-seen.txt
+          NEW=""
+          for tag in latest next alpha; do
+            v=$(npm view @deepseek-ai/dsh dist-tags.$tag 2>/dev/null || true)
+            [ -n "$v" ] && ! grep -qxF "$v" dsh-seen.txt && NEW="$NEW $v"
+          done
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+      - name: Re-run CI for each new release
+        if: steps.detect.outputs.new != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for v in ${{ steps.detect.outputs.new }}; do
+            gh workflow run ci.yml --ref "$GITHUB_REF_NAME"
+            echo "$v" >> dsh-seen.txt
+          done
+      - name: Save last-tested DSH versions
+        if: steps.detect.outputs.new != ''
+        uses: actions/cache/save@v4
+        with:
+          path: dsh-seen.txt
+          key: dsh-seen-${{ github.run_id }}

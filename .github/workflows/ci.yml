@@ -49,11 +49,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12.4.2
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: mkdir -p /tmp/dsh-cli && cd /tmp/dsh-cli && pnpm init > /dev/null && pnpm add @deepseek-ai/dsh@latest --allow-build @deepseek-ai/dsh-subprocess-local --allow-build @google/genai --allow-build koffi --allow-build node-pty --allow-build protobufjs
+      - run: mkdir -p /tmp/dsh-cli && cd /tmp/dsh-cli && pnpm init -y > /dev/null && pnpm add @deepseek-ai/dsh@latest --allow-build @deepseek-ai/dsh-subprocess-local --allow-build @google/genai --allow-build koffi --allow-build node-pty --allow-build protobufjs
       - run: $DSH plugin --profile ci-claude add .
       - run: $DSH --profile ci-claude --dump-config | grep claude-driver
       # Tarball installs only see `files`-whitelisted content.

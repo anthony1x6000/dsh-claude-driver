@@ -8,7 +8,7 @@ const settings = {
   model: 'fable',
   maxTurns: 4,
   proxy: 'http://127.0.0.1:7897',
-  cwd: 'C:/Users/Administrator/Desktop/dsh-workspace/space-1',
+  cwd: process.cwd(),
 }
 
 async function run(label, ctx, options, settings) {

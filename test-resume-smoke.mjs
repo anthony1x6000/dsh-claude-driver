@@ -10,7 +10,7 @@ const settings = {
   model: 'haiku',
   maxTurns: 2,
   proxy: 'http://127.0.0.1:7897',
-  cwd: 'C:/Users/Administrator/Desktop/dsh-workspace/space-1',
+  cwd: process.cwd(),
 }
 const ctx = { get: () => undefined, logger: console }
 const dshSessionId = `resume-smoke-${process.pid}-${Date.now()}`

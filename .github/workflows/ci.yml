@@ -1,0 +1,62 @@
+name: ci
+
+# push/PR guard the driver itself; workflow_dispatch is how dsh-release-watch
+# re-runs the suite (and the per-channel DSH compat matrix) on a new DSH release.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: npm test
+
+  dsh-release-compat:
+    name: dsh ${{ matrix.channel }} compat
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [latest, next, alpha]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Resolve the DSH release for this channel
+        run: |
+          VERSION=$(npm view @deepseek-ai/dsh dist-tags.${{ matrix.channel }})
+          test -n "$VERSION"
+          echo "DSH_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Testing against @deepseek-ai/dsh@$VERSION (${{ matrix.channel }})"
+      - run: node --test test/dsh-compat.test.mjs
+
+  install:
+    runs-on: ubuntu-latest
+    env:
+      DSH: /tmp/dsh-cli/node_modules/.bin/dsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: mkdir -p /tmp/dsh-cli && cd /tmp/dsh-cli && pnpm init -y > /dev/null && pnpm add @deepseek-ai/dsh@latest --allow-build @deepseek-ai/dsh-subprocess-local --allow-build @google/genai --allow-build koffi --allow-build node-pty --allow-build protobufjs
+      - run: $DSH plugin --profile ci-claude add .
+      - run: $DSH --profile ci-claude --dump-config | grep claude-driver
+      # Tarball installs only see `files`-whitelisted content.
+      - run: mkdir -p /tmp/claude-pkg && npm pack --pack-destination /tmp/claude-pkg
+      - run: $DSH plugin --profile ci-claude-pack add /tmp/claude-pkg/*.tgz
+      - run: $DSH --profile ci-claude-pack --dump-config | grep claude-driver

@@ -24,7 +24,7 @@ function memfs(seed = {}) {
     const set = new Set()
     for (const path of files.keys()) {
       const parts = path.split(/[\\/]/)
-      for (let i = 1; i < parts.length; i += 1) set.add(parts.slice(0, i).join('\\'))
+      for (let i = 1; i < parts.length; i += 1) set.add(parts.slice(0, i).join('/'))
     }
     return set
   }
@@ -33,7 +33,7 @@ function memfs(seed = {}) {
     existsSync: (path) => files.has(path) || dirs().has(path),
     mkdirSync: () => {},
     readdirSync: (path) => {
-      const prefix = `${path}\\`
+      const prefix = `${path}/`
       const names = new Set()
       for (const file of files.keys()) {
         if (!file.startsWith(prefix)) continue
@@ -52,8 +52,8 @@ function memfs(seed = {}) {
   }
 }
 
-const CLAUDE_HOME = 'C:\\home\\.claude'
-const STATE_DIR = 'C:\\home\\.dsh\\storages\\claude-driver'
+const CLAUDE_HOME = '/home/.claude'
+const STATE_DIR = '/home/.dsh/storages/claude-driver'
 const SESSION = 'sess-1'
 
 function transcriptPath(sessionId, agentId, project = 'proj-a') {
@@ -117,14 +117,14 @@ function transcript(agentId, { prompt, texts }) {
   const file = transcriptPath(SESSION, 'bad')
   const fs = memfs({ [file]: 'not json\n{"type":"assistant"\n' })
   assert.equal(readAgentTranscript(file, { fs }), undefined, 'unparseable lines yield no record')
-  assert.equal(readAgentTranscript('C:\\missing.jsonl', { fs }), undefined, 'a missing file never throws')
+  assert.equal(readAgentTranscript('/missing.jsonl', { fs }), undefined, 'a missing file never throws')
 }
 
 // --- marker lifecycle: written once, cleared by a run that finishes ----------
 {
   const fs = memfs()
   const opts = { fs, stateDir: STATE_DIR }
-  markRunAtRisk({ sessionId: SESSION, dshSessionId: 'dsh-1', cwd: 'C:\\w', markedAt: '2026-09-07T10:00:00.000Z' }, opts)
+  markRunAtRisk({ sessionId: SESSION, dshSessionId: 'dsh-1', cwd: '/w', markedAt: '2026-09-07T10:00:00.000Z' }, opts)
   assert.equal(readRunsAtRisk(opts).length, 1, 'the marker is on disk while work is in flight')
   clearRunAtRisk(SESSION, opts)
   assert.equal(readRunsAtRisk(opts).length, 0, 'a clean finish retires its own marker')
@@ -141,7 +141,7 @@ function transcript(agentId, { prompt, texts }) {
   })
   const opts = { fs, stateDir: STATE_DIR, claudeHome: CLAUDE_HOME }
   markRunAtRisk(
-    { sessionId: SESSION, dshSessionId: 'dsh-1', cwd: 'C:\\w', markedAt: new Date().toISOString(), tasks: ['report A'] },
+    { sessionId: SESSION, dshSessionId: 'dsh-1', cwd: '/w', markedAt: new Date().toISOString(), tasks: ['report A'] },
     opts,
   )
 

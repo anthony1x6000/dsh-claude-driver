@@ -1,5 +1,9 @@
 # dsh-claude-driver
 
+```sh
+dsh plugin --profile web add "github:anthony1x6000/dsh-claude-driver#main" && echo "restart dsh web"
+```
+
 [![ci](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml/badge.svg)](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml)
 
 Use your local [Claude Code](https://claude.com/claude-code) subscription as a main model in [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), through the official Claude Agent SDK. Mounting the plugin is inert until a session selects the `claude-code` provider.

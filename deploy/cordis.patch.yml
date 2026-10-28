@@ -24,7 +24,7 @@
         model: fable
         maxTurns: 100
         permissionMode: acceptEdits
-        proxy: http://127.0.0.1:7897
+        # proxy: http://127.0.0.1:7897   # 仅在需要且代理确实在运行时才取消注释
         # 可选：自定义目录模型与思考档位（contextWindow 为真实窗口：fable/opus=1M、sonnet=967k、haiku=200k）
         # models:
         #   - { id: fable,  name: Claude Fable,  contextWindow: 1000000 }

@@ -2,6 +2,12 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.9.2] - 2026-10-28
+
+### Fixed
+- **回合永远转圈（thinking forever）**：默认 `proxy` 为 `http://127.0.0.1:7897`，本机没有进程监听时 Claude Code 对 API 静默重试数分钟，只发 `api_retry` 帧，DSH 收不到任何 chunk 也收不到 finish。现已：①移除默认代理（主模型与 subagent 两条路径）；②新增 `lib/stall-guard.js`：连续网络层 `api_retry` 达 `apiRetryLimit`（3）次、或启动后 `startupTimeoutMs`（120s）无任何输出，即中止并以明确错误结束回合。
+- 测试：`test/hang-regression.test.mjs`（含变异验证）与 `test/e2e.test.mjs`（真实 CLI + 本地 Anthropic API 替身：普通回合、死代理、不可达 API、DSH 工具桥接、34 工具+长历史、中止）。
+
 ## [0.9.1] - 2026-09-17
 
 > 安装注意事项同 0.4.0 三条，不再重复。

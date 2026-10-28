@@ -49,6 +49,10 @@ You (DSH UI)  ->  DSH session  ->  llm/stream route "claude-code"
 
 For the full feature list, tuning options and design notes, see the sections below (currently written in Chinese).
 
+## Troubleshooting: "thinking forever"
+
+A turn always ends now. If Claude Code cannot reach the Anthropic API (a configured `proxy` that is not running, no network, a firewall) the turn fails within seconds with `cannot reach the Anthropic API ... check that the proxy is running`. Earlier versions shipped a default `proxy` of `http://127.0.0.1:7897`; with nothing listening there the CLI retried silently for minutes and the UI spun forever. There is no default proxy any more: set `proxy` only if you need one.
+
 ## Install
 
 Prerequisite: the `claude` CLI is installed and logged in (or the SDK's platform binary is present).
@@ -362,7 +366,7 @@ Claude 的模型别名（`fable`/`sonnet`/`opus`/`haiku`）指向各自家族**�
 - DSH（DeepSeek Harness），`web` / `desktop` profile 目录布局（`~/.dsh/profiles/`）
 - Node ≥ 22
 - Claude 订阅 + `claude` CLI 可用（或 SDK 的平台二进制包）
-- **出网 IP 是数据中心 IP 时需要代理**（Anthropic 会 403），如 `http://127.0.0.1:7897`
+- **出网 IP 是数据中心 IP 时需要代理**（Anthropic 会 403），（需自行配置 `proxy`，且代理必须真的在运行）
 
 ## 安装（手动，Linux）
 
@@ -400,7 +404,9 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 | `effort` | `medium` | 思考强度 |
 | `maxTurns` | `100` | 单步内部工具循环上限 |
 | `permissionMode` | `acceptEdits` | Claude Code 权限模式 |
-| `proxy` | `http://127.0.0.1:7897` | 代理（按机器改） |
+| `proxy` | _(none)_ | 代理地址；默认不设置。只在出网 IP 被 Anthropic 403 时配置，且必须真有进程在监听 |
+| `startupTimeoutMs` | `120000` | Claude Code 启动后这么久没有任何输出就判定卡死并报错 |
+| `apiRetryLimit` | `3` | 连续网络层 API 重试达到此数即判定不可达并报错（不再无限转圈） |
 | `resumeChain` | `true` | 复用 Claude 会话 |
 | `prewarm` | `false` | 回合一结束就预启动下一轮的 CLI 进程，下一条消息跳过约 4s 本地初始化（见下节） |
 | `prewarmTtlMs` | `900000` | 预热进程空闲多久未被领养即回收（15 分钟） |

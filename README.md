@@ -6,7 +6,48 @@ dsh plugin --profile web add "github:anthony1x6000/dsh-claude-driver#main" && ec
 
 [![ci](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml/badge.svg)](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml)
 
-Use your local [Claude Code](https://claude.com/claude-code) subscription as a main model in [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), through the official Claude Agent SDK. Mounting the plugin is inert until a session selects the `claude-code` provider.
+Use [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) as your front end while **Claude Code does the thinking**, and keep your DSH plugins available to it.
+
+## What this is for
+
+You want to work in DSH (its UI, sessions, approvals, sandbox and plugin ecosystem), but for some sessions you want the model on the other end to be your local [Claude Code](https://claude.com/claude-code) subscription instead of a DeepSeek model. This plugin makes that a model-picker choice:
+
+- **Your turns go to Claude Code.** Pick a model under **Claude Code** in the model picker and each step of that session is run through the official [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk), which drives your local `claude` CLI. Claude Code is the model and the agent loop for that session. Switch the picker back to a DeepSeek model at any time.
+- **Claude Code can use your DSH tools.** DSH's tool registry is exposed to Claude Code through an in-process MCP bridge, so tools contributed by your DSH plugins show up as callable tools for Claude. Bridged calls still execute inside DSH, so DSH's sandbox and approval flow apply, and they render as native DSH tool cards.
+- **DSH subagents can run on Claude Code too**, via a `claude-code` subagent provider.
+- **Nothing changes until you opt in.** Mounting the plugin is inert; it only takes over a turn when a session selects the `claude-code` provider.
+
+It uses the official SDK only: no OAuth tokens are extracted and the client is not impersonated.
+
+### How a turn flows
+
+```
+You (DSH UI)  ->  DSH session  ->  llm/stream route "claude-code"
+                                        |
+                                        v
+                          Claude Agent SDK -> local `claude` CLI  (the model + agent loop)
+                                        |  tool calls
+                                        v
+                       MCP bridge  ->  DSH tools / plugins (sandbox + approval) -> result back to Claude
+```
+
+### What carries over, and what does not
+
+| Carries over | Does not carry over automatically |
+|---|---|
+| Tools registered with DSH by your plugins (via the MCP bridge) | Plugins that only add UI panels, slash commands, hooks, prompt fragments or skills |
+| DSH approval and sandbox for bridged tool calls | Claude Code's own skills and `CLAUDE.md` (they stay separate from DSH's) |
+| Native DSH tool cards, usage and streaming | Claude's built-in tools (Bash, Edit, ...) run natively unless `approveBuiltinTools` is on |
+
+`approveBuiltinTools` only works when `permissionMode` actually consults the permission bridge; `bypassPermissions` and `dontAsk` skip it, and the plugin logs a warning if you combine them.
+
+### Limits to know about
+
+- Two agent loops are involved (DSH's and Claude Code's). Compaction is handled by dropping the Claude resume chain so the next turn restarts over the compacted history; `/claude-fresh` does the same on demand.
+- If your outbound IP is a datacenter IP, Anthropic answers 403; set `proxy` in your own profile patch.
+- You need the `claude` CLI installed and logged in (or the SDK's platform binary present). Linux is the supported platform.
+
+For the full feature list, tuning options and design notes, see the sections below (currently written in Chinese).
 
 ## Install
 

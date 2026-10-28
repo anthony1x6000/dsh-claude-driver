@@ -61,7 +61,7 @@ test('a DSH-registered tool is exposed on Claude\'s MCP server', async () => {
   assert.equal(server.type, 'sdk')
   assert.equal(server.name, 'dsh-tools')
   const registered = server.instance?._registeredTools
-  if (registered) assert.ok(FAKE_TOOL.name in registered, 'tool is registered on the MCP server instance')
+  assert.ok(registered && FAKE_TOOL.name in registered, 'tool is registered on the MCP server instance')
 })
 
 test('Claude calling the bridged tool executes it inside DSH and gets the result', async () => {

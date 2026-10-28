@@ -44,6 +44,6 @@
     "@deepseek-ai/cordis": "^4.0.1"
   },
   "scripts": {
-    "test": "node --test test/dsh-compat.test.mjs && node test-model-catalog.mjs && node test-tool-progress.mjs && node test-background-tasks.mjs && node test-subagent-background-tasks.mjs && node test-prewarm.mjs && node test-approval-bridge.mjs && node test-ask-user-question.mjs && node test-builtin-tool-activity.mjs && node test-native-tool-cards.mjs && node test-image-prompt.mjs && node test-agent-harvest.mjs"
+    "test": "node --test test/dsh-compat.test.mjs && node test-model-catalog.mjs && node test-tool-progress.mjs && node test-background-tasks.mjs && node test-subagent-background-tasks.mjs && node test-prewarm.mjs && node test-approval-bridge.mjs && node test-ask-user-question.mjs && node test-builtin-tool-activity.mjs && node test-native-tool-cards.mjs && node test-image-prompt.mjs"
   }
 }

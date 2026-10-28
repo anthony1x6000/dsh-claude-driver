@@ -57,6 +57,6 @@ jobs:
       - run: $DSH plugin --profile ci-claude add .
       - run: $DSH --profile ci-claude --dump-config | grep claude-driver
       # Tarball installs only see `files`-whitelisted content.
-      - run: npm pack --pack-destination /tmp/claude-pkg
+      - run: mkdir -p /tmp/claude-pkg && npm pack --pack-destination /tmp/claude-pkg
       - run: $DSH plugin --profile ci-claude-pack add /tmp/claude-pkg/*.tgz
       - run: $DSH --profile ci-claude-pack --dump-config | grep claude-driver

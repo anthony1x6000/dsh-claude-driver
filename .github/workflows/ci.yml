@@ -40,3 +40,23 @@ jobs:
           echo "DSH_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Testing against @deepseek-ai/dsh@$VERSION (${{ matrix.channel }})"
       - run: node --test test/dsh-compat.test.mjs
+
+  install:
+    runs-on: ubuntu-latest
+    env:
+      DSH: /tmp/dsh-cli/node_modules/.bin/dsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: mkdir -p /tmp/dsh-cli && cd /tmp/dsh-cli && pnpm init > /dev/null && pnpm add @deepseek-ai/dsh@latest --allow-build @deepseek-ai/dsh-subprocess-local --allow-build @google/genai --allow-build koffi --allow-build node-pty --allow-build protobufjs
+      - run: $DSH plugin --profile ci-claude add .
+      - run: $DSH --profile ci-claude --dump-config | grep claude-driver
+      # Tarball installs only see `files`-whitelisted content.
+      - run: npm pack --pack-destination /tmp/claude-pkg
+      - run: $DSH plugin --profile ci-claude-pack add /tmp/claude-pkg/*.tgz
+      - run: $DSH --profile ci-claude-pack --dump-config | grep claude-driver

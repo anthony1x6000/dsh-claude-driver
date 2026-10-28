@@ -1,5 +1,33 @@
 # dsh-claude-driver
 
+[![ci](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml/badge.svg)](https://github.com/anthony1x6000/dsh-claude-driver/actions/workflows/ci.yml)
+
+Use your local [Claude Code](https://claude.com/claude-code) subscription as a main model in [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), through the official Claude Agent SDK. Mounting the plugin is inert until a session selects the `claude-code` provider.
+
+## Install
+
+Prerequisite: the `claude` CLI is installed and logged in (or the SDK's platform binary is present).
+
+Install the bundle into your `web` profile (no profile hand-editing):
+
+```sh
+dsh plugin --profile web add "github:anthony1x6000/dsh-claude-driver#main"
+```
+
+Verify the layer without booting:
+
+```sh
+dsh --profile web --dump-config | grep -B 1 -A 4 claude-driver
+```
+
+Then restart `dsh web`, open the model picker and choose a model under **Claude Code**. Use `--profile desktop` for DSH Desktop. If your outbound IP is a datacenter IP (Anthropic answers 403), set `proxy` in your own profile patch, never in the shipped manifest. To uninstall: `dsh plugin --profile web remove dsh-claude-driver` and restart.
+
+Local development: `npm install && npm test`, then `dsh plugin --profile web add link:/path/to/dsh-claude-driver`.
+
+The manual, Windows-oriented install notes further down are kept for reference.
+
+---
+
 DSH（DeepSeek Harness）宿主插件：让 DSH 会话把**本地 Claude Code 订阅**（官方 Claude Agent SDK）当主模型用，工具活动以 DSH 原生卡片呈现。
 
 - 合规：全程走官方 `@anthropic-ai/claude-agent-sdk`，**不提取任何 OAuth token**、不冒充客户端。

@@ -19,6 +19,15 @@ test('manifest declares the bundle layer and web client entry', () => {
   assert.ok(manifest.files.includes('lib') && manifest.files.includes('cordis.patch.yml'))
 })
 
+test('shipped payload mounts by package name and includes what it needs', () => {
+  const patch = readFileSync(join(root, 'cordis.patch.yml'), 'utf8')
+  assert.ok(patch.includes(`name: ${manifest.name}`))
+  for (const shipped of ['lib', 'client', 'cordis.patch.yml', 'README.md', 'LICENSE']) {
+    assert.ok(manifest.files.includes(shipped), `files must ship ${shipped}`)
+  }
+  assert.ok(manifest.engines?.node)
+})
+
 test('cordis peer range stays on the v4 line DSH ships', () => {
   const range = manifest.peerDependencies['@deepseek-ai/cordis']
   assert.ok(range, 'cordis must be a peer dependency')

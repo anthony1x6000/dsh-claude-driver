@@ -1,3 +1,5 @@
+# Claude Code driver bundle: use your local Claude Code subscription as a DSH main model.
+# Install: dsh plugin --profile web add "github:anthony1x6000/dsh-claude-driver#main"
 # Bundle wiring for `dsh plugin add` / registry installs.
 #
 # Mounting this plugin is inert on its own: it registers an llm adapter for the

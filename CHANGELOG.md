@@ -2,6 +2,22 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.13.0] - 2026-10-29
+
+### Added
+- **Claude's built-in tools are native DSH tool cards.** Bash, Read, Edit, Write, Grep, Glob, WebFetch and WebSearch are mapped onto DSH's own `bash`/`read`/`edit`/`write`/`grep`/`glob`/`web_fetch`/`web_search` cards (other tools get a generic card). A card opens when the tool starts and closes with its output; Bash results end with the `[exit code: N]` marker DSH's terminal card reads; a card still open when the turn ends is closed as interrupted. The `⚙ Bash · …` lines and background-task notes for foreground commands no longer fill the thinking block. `builtinToolCards: false` restores the old text narration.
+- **Never looks hung.** While Claude or a tool is silent, a throttled pulse ("still working 6s — Bash: sleep 4 && echo …") appears in the thinking block, naming the running tool, backing off to one line a minute (`pulseMs`, default 10s, `0` off). Claude's API retries (from the second) and its own context compaction are announced as they happen. Pulses never reset the startup or retry watchdogs.
+- `test/suite-complete.test.mjs`: fails if a test file exists but `npm test` does not run it.
+
+### Fixed (found only by running against a real DSH host)
+- **Cards never rendered on real DSH.** Production sessions have no `events` array (only `seq`/`eventAt`/`snapshotEvents`), so the driver found no open step and silently skipped every card, including the bridged-tool cards from 0.12. All session reads now go through one reader that handles both shapes.
+- **Tool results were rejected by DSH.** The `tool/result` message was a user-role wrapper; DSH's v4 format requires a first-class `tool`-role message (`format v4 tool/result requires a tool-role message`), which aborted the turn with the card still open. Fixed, and the test session now enforces the same rule.
+- **Internal calls (session title, one-shot summary) could run tools.** They were given the DSH tool bridge and Claude's built-ins; a title call re-ran the user's Bash command. They now get no tools.
+- The default for `showToolProgress` now matches its documented value (off).
+
+### Tests
+- `test/builtin-cards.test.mjs`, `test/liveness.test.mjs`, `test/real-session.test.mjs`, `test/no-leaks.test.mjs`, `test/e2e-reactive.test.mjs` (real Claude CLI running a genuinely slow command). Verified on a real DSH host: one `bash` card opens and closes with `[exit code: 0]`, pulses name the command, the process exits cleanly. Each fix was mutation-checked.
+
 ## [0.12.0] - 2026-10-29
 
 ### Added

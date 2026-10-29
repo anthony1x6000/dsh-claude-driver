@@ -428,6 +428,8 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 |---|---|---|
 | `provider` | `claude-code` | 接管的路由名 |
 | `model` | `fable` | 默认模型 |
+| `pulseMs` | `10000` | 静默多久后显示「仍在工作」心跳（之后间隔逐步拉长到 60 秒封顶）；`0` 关闭 |
+| `builtinToolCards` | `true` | Claude Code 内置工具（Bash/Read/Edit/Write/Grep/Glob/WebFetch/WebSearch…）渲染为 DSH 原生工具卡片，而不是思考块里的文字行；`false` 恢复文字旁白 |
 | `preferDshTools` | `true` | DSH 提供同类功能时（计划模式、定时、待办、网页搜索/抓取），隐藏 Claude Code 的重复内置工具（`EnterPlanMode`/`ExitPlanMode`、`Cron*`、`TodoWrite`、`WebSearch`/`WebFetch`），以 DSH 为准 |
 | `nativeCompaction` | `true` | DSH 压缩时让 Claude Code 用自己的 `/compact` 压缩同一会话（同一 session id），并把 Claude 的摘要作为 DSH 摘要；失败时回落为一次性摘要 + 新会话 |
 | `models` | _(unset)_ | 仅在需要固定/改名时设置；默认由 Claude Code 自己的 `supportedModels()` 提供名称（如 `Sonnet 5.5`）、版本与上下文窗口，新模型发布后自动出现 |

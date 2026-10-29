@@ -20,7 +20,7 @@ function mockQuery(messages) {
 
 async function collect(settings, messages, options = baseOptions) {
   const chunks = []
-  for await (const chunk of streamClaudeChunks(ctx, options, { resumeChain: false, queryImpl: mockQuery(messages), ...settings })) {
+  for await (const chunk of streamClaudeChunks(ctx, options, { resumeChain: false, queryImpl: mockQuery(messages), showToolProgress: true, ...settings })) {
     chunks.push(chunk)
   }
   return chunks
@@ -37,7 +37,7 @@ assert.equal(renderToolProgress('read_file'), '\n[Claude Code] 正在调用工�
 assert.ok(renderToolProgress('').includes('(unknown)'), 'missing tool name still renders')
 assert.equal(renderToolProgress('mcp__dsh-tools__add'), renderToolProgress('add'), 'mcp server prefix stripped')
 
-// --- default (showToolProgress on): tool_use blocks become index-0 text-deltas ---
+// --- showToolProgress on (opt-in; the shipped default is off): tool_use blocks become index-0 text-deltas ---
 {
   const chunks = await collect({}, [
     msgStart(),

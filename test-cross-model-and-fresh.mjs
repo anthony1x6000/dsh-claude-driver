@@ -111,7 +111,7 @@ const toolSchemas = [
   assert.equal(block.arguments, JSON.stringify({ cmd: 'echo 7' }))
   // downstream pairing: the tool-result user message cites the same callId,
   // so deepseek's serializeMessages emits assistant.tool_calls + role:'tool'
-  assert.equal(result.data.message.content[0].toolCallId, block.id)
+  assert.equal(result.data.message.toolCallId, block.id)
   // the tool/result still cites the tool/call event, not the pairing message
   assert.deepEqual(result.sourceEventSeqs, [call.seq])
 }

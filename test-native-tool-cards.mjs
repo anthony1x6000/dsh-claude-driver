@@ -77,11 +77,11 @@ const bridgeOptions = { provider: 'claude-code', tools: toolSchemas }
 // --- buildToolResultMessage: dsh-llm createToolResultMessage shape ----------
 {
   const message = buildToolResultMessage('c1', [{ type: 'text', text: 'ok' }], false)
-  assert.equal(message.role, 'user')
+  assert.equal(message.role, 'tool')
   assert.deepEqual(message.source, { kind: 'tool', callId: 'c1' })
-  assert.equal(message.content[0].type, 'tool-result')
-  assert.equal(message.content[0].toolCallId, 'c1')
-  assert.equal(message.content[0].isError, false)
+  assert.equal(message.toolCallId, 'c1')
+  assert.equal(message.isError, false)
+  assert.deepEqual(message.content, [{ type: 'text', text: 'ok' }])
   assert.ok(typeof message.id === 'string' && message.id.length > 0, 'message carries an identity')
 }
 
@@ -113,9 +113,9 @@ const bridgeOptions = { provider: 'claude-code', tools: toolSchemas }
   assert.equal(result.data.turn, 1)
   assert.equal(result.data.step, 1)
   assert.equal(result.data.message.source.callId, call.data.callId)
-  assert.equal(result.data.message.content[0].toolCallId, call.data.callId)
-  assert.equal(result.data.message.content[0].isError, false)
-  assert.deepEqual(result.data.message.content[0].content, [{ type: 'text', text: '7' }])
+  assert.equal(result.data.message.toolCallId, call.data.callId)
+  assert.equal(result.data.message.isError, false)
+  assert.deepEqual(result.data.message.content, [{ type: 'text', text: '7' }])
   assert.deepEqual(result.data.meta, { exitCode: 0 }, 'meta passes through for presentResult')
   assert.equal(result.surfaceOp, 'append')
   assert.deepEqual(result.sourceEventSeqs, [call.seq], 'result cites its call event')
@@ -141,7 +141,7 @@ const bridgeOptions = { provider: 'claude-code', tools: toolSchemas }
   const reply = await bridge.handlers.get('pwsh')({ cmd: 'bad' })
   assert.equal(reply.isError, true)
   const result = session.events.find((e) => e.type === 'tool/result')
-  assert.equal(result.data.message.content[0].isError, true)
+  assert.equal(result.data.message.isError, true)
   assert.deepEqual(result.data.error, { name: 'ToolError', code: 'BOOM' }, 'error.info rides the event error field')
   assert.equal(result.data.meta, undefined, 'absent meta stays absent')
 }
@@ -159,7 +159,7 @@ const bridgeOptions = { provider: 'claude-code', tools: toolSchemas }
   await assert.rejects(() => bridge.handlers.get('pwsh')({ cmd: 'x' }), /pipeline exploded/)
   const result = session.events.find((e) => e.type === 'tool/result')
   assert.ok(result, 'card closed despite the throw')
-  assert.equal(result.data.message.content[0].isError, true)
+  assert.equal(result.data.message.isError, true)
 }
 
 // --- nativeToolCards:false — execution unchanged, zero session events -------
@@ -235,7 +235,10 @@ const bridgeOptions = { provider: 'claude-code', tools: toolSchemas }
   for await (const chunk of streamClaudeChunks(ctx, options, settings)) chunks.push(chunk)
   const texts = chunks.filter((c) => c.type === 'text-delta').map((c) => c.text)
   assert.ok(!texts.includes(renderToolProgress('mcp__dsh-tools__pwsh')), 'bridged tool narration suppressed')
-  assert.ok(texts.includes(renderToolProgress('WebSearch')), 'built-in tool narration kept')
+  assert.ok(!texts.includes(renderToolProgress('WebSearch')), 'built-in tool is a native card now, not a text line')
+  const builtinCard = session.events.find((e) => e.type === 'tool/call' && e.data.name === 'web_search')
+  assert.ok(builtinCard, 'the built-in WebSearch opened a native web_search card')
+  assert.deepEqual(JSON.parse(builtinCard.data.arguments), { queries: ['x'] })
   assert.deepEqual(chunks.at(-1).reason, { kind: 'stop' })
 }
 

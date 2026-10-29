@@ -2,6 +2,19 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.11.0] - 2026-10-28
+
+### Fixed
+- **`/compact` failed on claude-code sessions** with `this.adapters.get(...)?.adapter.imageRequestPricing is not a function`. The model-picker catalog adapter now implements every `LlmAdapter` method DSH calls (`imageRequestPricing`, `imageRequestTarget` added). CI reads the method list from each released `@deepseek-ai/dsh-llm` (latest/next/alpha) and fails if the adapter is missing one.
+
+### Changed
+- **DSH compaction compacts the live Claude Code session natively.** Manual `/compact` and automatic compaction run Claude's own `/compact` on the resumed Claude session (same session id); Claude's summary (PostCompact hook) is returned to DSH as the summary it commits, and the resume chain is kept. Falls back to a one-shot summary plus a fresh Claude session when there is no live session or native compaction fails. `nativeCompaction: false` restores the old behaviour.
+- Repeat compaction requests before the next turn (DSH retries) reuse the existing summary instead of compacting Claude again.
+
+### Tests
+- `test/adapter-contract.test.mjs`, `test/native-compact.test.mjs`, `test/native-compact-retry.test.mjs`, `test/e2e-native-compact.test.mjs` (real Claude CLI against a local Anthropic API double). Mutation-checked: removing the fixes fails 10 of 15.
+- Verified on a real DSH host (headless profile, real `/compact` command and real automatic compaction, real Claude login) with `test/support/dsh-compact-probe`: DSH commits Claude's summary, Claude's transcript shows one `compact_boundary` on the same session id, and a follow-up turn still recalls facts from before compaction.
+
 ## [0.10.0] - 2026-10-28
 
 ### Added

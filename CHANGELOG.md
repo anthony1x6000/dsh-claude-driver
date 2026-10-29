@@ -2,6 +2,13 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.10.0] - 2026-10-28
+
+### Added
+- **DSH 权限同步**：Claude Code 的权限模式不再固定为 `acceptEdits`，而是每回合按 DSH 会话的沙箱模式推导（`danger-full-access`→`bypassPermissions`、`workspace-write`→`acceptEdits`、`read-only`→`plan`）。显式 `permissionMode` 优先；`followDshPermissions: false` 恢复旧行为。subagent provider 同样跟随委派会话。预热进程按模式隔离：权限切换后不会领养旧模式的进程。新增 `lib/permission-sync.js`。
+- **后台任务镜像为 DSH job**：Claude Code 自己的后台任务（`run_in_background` 的 Bash、后台 agent、monitor）现在注册为 kind `claude-task` 的 DSH job，`job_list` / `job_output` / `job_kill` 可见；`job_kill` 经 `query.stopTask` 真正停止 Claude 任务；按 Claude 的通知以 completed / failed / killed 结算，会话结束时仍开着的 job 结算为 killed。可用 `mirrorBackgroundJobs: false` 关闭。新增 `lib/job-mirror.js`。
+- 测试：`test/permissions.test.mjs`、`test/background-jobs.test.mjs`，以及真实 CLI 的 `test/e2e-permissions.test.mjs`（完整访问下 Bash 才能执行工作区外的命令）与 `test/e2e-background.test.mjs`（后台任务镜像、输出、DSH 侧 kill 真正终止进程）。三处变异验证均能被抓到。
+
 ## [0.9.3] - 2026-10-28
 
 ### Changed

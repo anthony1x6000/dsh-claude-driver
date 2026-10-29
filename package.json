@@ -1,6 +1,6 @@
 {
   "name": "dsh-claude-driver",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "description": "DSH host plugin: drive the main session model through local Claude Code (official Claude Agent SDK) by taking over the llm/stream route `claude-code`.",
   "type": "module",
   "main": "lib/index.js",
@@ -46,7 +46,7 @@
     "@deepseek-ai/cordis": "^4.0.1"
   },
   "scripts": {
-    "test": "node --test --test-force-exit test/dsh-compat.test.mjs test/tool-bridge.test.mjs test/hang-regression.test.mjs test/e2e.test.mjs test/model-catalog.test.mjs test/e2e-models.test.mjs && node test-model-catalog.mjs && node test-tool-progress.mjs && node test-background-tasks.mjs && node test-subagent-background-tasks.mjs && node test-prewarm.mjs && node test-approval-bridge.mjs && node test-agent-harvest.mjs && node test-ask-user-question.mjs && node test-builtin-tool-activity.mjs && node test-native-tool-cards.mjs && node test-image-prompt.mjs"
+    "test": "node --test --test-force-exit test/dsh-compat.test.mjs test/tool-bridge.test.mjs test/hang-regression.test.mjs test/e2e.test.mjs test/model-catalog.test.mjs test/e2e-models.test.mjs test/permissions.test.mjs test/background-jobs.test.mjs test/e2e-permissions.test.mjs test/e2e-background.test.mjs && node test-model-catalog.mjs && node test-tool-progress.mjs && node test-background-tasks.mjs && node test-subagent-background-tasks.mjs && node test-prewarm.mjs && node test-approval-bridge.mjs && node test-agent-harvest.mjs && node test-ask-user-question.mjs && node test-builtin-tool-activity.mjs && node test-native-tool-cards.mjs && node test-image-prompt.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

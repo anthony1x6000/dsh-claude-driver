@@ -2,6 +2,13 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.9.3] - 2026-10-28
+
+### Changed
+- 选择器模型目录改为跟随 Claude Code 自身：别名显示真实名称与版本（Sonnet 5.5 / Opus 5.5 / Haiku 5.5 / Fable 5.1），隐藏冗余的 `default`；上下文窗口按代际推导（5 代起 1M），不再用过期的写死表。
+- 目录每 10 分钟自动刷新（`modelRefreshMs`），失败 30 秒后重试（`modelRetryMs`），发现超时 15 秒回落别名（`discoveryTimeoutMs`）；刷新失败不会降级已发现的列表；每次发现后释放临时 CLI 进程。
+- 测试：`test/model-catalog.test.mjs`（真实 SDK 输出作夹具）、`test/e2e-models.test.mjs`（真实 CLI）。
+
 ## [0.9.2] - 2026-10-28
 
 ### Fixed

@@ -40,6 +40,15 @@ jobs:
           echo "DSH_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Testing against @deepseek-ai/dsh@$VERSION (${{ matrix.channel }})"
       - run: node --test test/dsh-compat.test.mjs
+      - name: Check the catalog adapter against this release's LlmAdapter
+        run: |
+          # dsh-llm is released in lockstep with dsh (same version).
+          mkdir -p /tmp/dsh-llm && cd /tmp/dsh-llm
+          npm pack "@deepseek-ai/dsh-llm@$DSH_VERSION" --silent >/dev/null
+          tar -xzf deepseek-ai-dsh-llm-*.tgz
+          echo "DSH_LLM_TYPES=/tmp/dsh-llm/package/lib/types/index.d.ts" >> "$GITHUB_ENV"
+      - run: npm install --no-audit --no-fund
+      - run: node --test test/adapter-contract.test.mjs
 
   install:
     runs-on: ubuntu-latest

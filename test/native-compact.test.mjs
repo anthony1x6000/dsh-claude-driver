@@ -1,0 +1,119 @@
+// DSH compaction on a claude-code session compacts the LIVE Claude session with
+// Claude's own /compact (same session id), and DSH's summary is Claude's.
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { clearResumeOnCompaction, getResumeSessions, streamClaudeChunks } from '../lib/index.js'
+
+const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }
+const user = (text) => ({ role: 'user', content: [{ type: 'text', text: text }] })
+const SUMMARY = 'Summary:\n1. User asked to remember PELICAN-42.'
+const compactionCall = (sessionId) => ({
+  provider: 'claude-code', model: 'sonnet', sessionId, purpose: 'compaction',
+  messages: [user('remember PELICAN-42'), { role: 'assistant', content: [{ type: 'text', text: 'ok' }] }, user('Summarize the conversation so far ...')],
+})
+async function drain(options, settings) {
+  const chunks = []
+  for await (const c of streamClaudeChunks(ctx, options, { resumeChain: true, ...settings })) chunks.push(c)
+  return chunks
+}
+const text = (chunks) => chunks.filter((c) => c.type === 'text-delta').map((c) => c.text).join('')
+
+// Fake Claude that honours /compact on a resumed session like the real CLI:
+// compact_boundary, PostCompact hook with the summary, result, same session id.
+function fakeClaude(calls, { compactFails = false } = {}) {
+  return ({ prompt, options }) => {
+    calls.push({ prompt, options })
+    return (async function* () {
+      const sid = options.resume ?? 'claude-new'
+      yield { type: 'system', subtype: 'init', session_id: sid }
+      if (prompt === '/compact') {
+        if (compactFails) {
+          yield { type: 'result', subtype: 'error_during_execution', is_error: true, errors: ['Not enough messages to compact'], session_id: sid }
+          return
+        }
+        yield { type: 'system', subtype: 'compact_boundary', compact_metadata: { trigger: 'manual', pre_tokens: 15000, post_tokens: 5000 }, session_id: sid }
+        for (const h of options.hooks?.PostCompact ?? []) for (const fn of h.hooks) await fn({ hook_event_name: 'PostCompact', trigger: 'manual', compact_summary: SUMMARY, session_id: sid }, undefined, { signal: new AbortController().signal })
+        yield { type: 'result', subtype: 'success', result: '', session_id: sid, usage: { input_tokens: 15000, output_tokens: 900 } }
+        return
+      }
+      yield { type: 'assistant', session_id: sid, message: { content: [{ type: 'text', text: 'one-shot summary' }] } }
+      yield { type: 'result', subtype: 'success', result: 'one-shot summary', session_id: sid, usage: { input_tokens: 1, output_tokens: 1 } }
+    })()
+  }
+}
+
+test('compaction on a live chain runs Claude /compact on that same session and returns its summary', async () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-1', 'claude-abc')
+  const calls = []
+  const chunks = await drain(compactionCall('dsh-1'), { queryImpl: fakeClaude(calls) })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].prompt, '/compact')
+  assert.equal(calls[0].options.resume, 'claude-abc')
+  assert.equal(text(chunks), SUMMARY)
+  assert.equal(chunks.at(-1).reason.kind, 'stop')
+  assert.equal(sessions.get('dsh-1'), 'claude-abc', 'chain kept: same Claude session continues')
+  sessions.delete('dsh-1')
+})
+
+test('the committed compaction/summary keeps a natively compacted chain', async () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-2', 'claude-def')
+  await drain(compactionCall('dsh-2'), { queryImpl: fakeClaude([]) })
+  const dropped = clearResumeOnCompaction({ id: 'dsh-2' }, { type: 'compaction/summary', data: { summary: [{ type: 'text', text: SUMMARY }], provider: 'claude-code', model: 'sonnet' } })
+  assert.equal(dropped, false)
+  assert.equal(sessions.get('dsh-2'), 'claude-def')
+  sessions.delete('dsh-2')
+})
+
+test('a compaction/summary written another way still resets the chain', () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-3', 'claude-ghi')
+  assert.equal(clearResumeOnCompaction({ id: 'dsh-3' }, { type: 'compaction/summary', data: { summary: [{ type: 'text', text: 'deepseek summary' }], provider: 'deepseek', model: 'x' } }), true)
+  assert.equal(sessions.has('dsh-3'), false)
+})
+
+test('no live chain: compaction falls back to a one-shot summary and does not resume anything', async () => {
+  const calls = []
+  const chunks = await drain(compactionCall('dsh-none'), { queryImpl: fakeClaude(calls) })
+  assert.equal(calls.length, 1)
+  assert.notEqual(calls[0].prompt, '/compact')
+  assert.equal(calls[0].options.resume, undefined)
+  assert.equal(text(chunks), 'one-shot summary')
+  assert.equal(getResumeSessions().has('dsh-none'), false)
+})
+
+test('native /compact failure falls back to the one-shot summary, and the chain is reset', async () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-4', 'claude-jkl')
+  const calls = []
+  const chunks = await drain(compactionCall('dsh-4'), { queryImpl: fakeClaude(calls, { compactFails: true }) })
+  assert.deepEqual(calls.map((c) => c.prompt === '/compact'), [true, false])
+  assert.equal(text(chunks), 'one-shot summary')
+  assert.equal(chunks.at(-1).reason.kind, 'stop')
+  clearResumeOnCompaction({ id: 'dsh-4' }, { type: 'compaction/summary', data: { summary: [{ type: 'text', text: 'one-shot summary' }] } })
+  assert.equal(sessions.has('dsh-4'), false)
+})
+
+test('nativeCompaction:false keeps the old behaviour', async () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-5', 'claude-mno')
+  const calls = []
+  await drain(compactionCall('dsh-5'), { queryImpl: fakeClaude(calls), nativeCompaction: false })
+  assert.notEqual(calls[0].prompt, '/compact')
+  sessions.delete('dsh-5')
+})
+
+test('the next user turn after native compaction resumes the compacted Claude session', async () => {
+  const sessions = getResumeSessions()
+  sessions.set('dsh-6', 'claude-pqr')
+  await drain(compactionCall('dsh-6'), { queryImpl: fakeClaude([]) })
+  clearResumeOnCompaction({ id: 'dsh-6' }, { type: 'compaction/summary', data: { summary: [{ type: 'text', text: SUMMARY }] } })
+  const calls = []
+  await drain({ provider: 'claude-code', model: 'sonnet', sessionId: 'dsh-6', messages: [user('a'), { role: 'assistant', content: [{ type: 'text', text: 'b' }] }, user('what was the codeword?')] }, { queryImpl: fakeClaude(calls) })
+  assert.equal(calls[0].options.resume, 'claude-pqr')
+  const prompt = calls[0].prompt
+  const first = typeof prompt === 'string' ? prompt : JSON.stringify((await prompt[Symbol.asyncIterator]().next()).value)
+  assert.match(first, /codeword/)
+  sessions.delete('dsh-6')
+})

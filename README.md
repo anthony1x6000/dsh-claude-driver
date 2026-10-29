@@ -71,6 +71,12 @@ The mode is fixed when a Claude Code process starts, so a switch applies from th
 
 **Background tasks.** Tasks Claude Code starts itself (`Bash` with `run_in_background`, background agents, monitors) are mirrored into DSH as jobs of kind `claude-task`: they appear in `job_list` and the jobs panel, `job_output` returns their progress and final output, and `job_kill` stops the real Claude task. A job settles as completed, failed or killed to match Claude's own notice, and any job still open when the Claude session ends is settled as killed rather than left running. The existing in-reply status narration is unchanged. Set `mirrorBackgroundJobs: false` to turn the mirror off.
 
+## Compaction
+
+DSH's `/compact` and its automatic compaction both compact the **live Claude Code session** with Claude's own `/compact`, on the same Claude session id. Claude's summary becomes the summary DSH records, so DSH and Claude hold the same condensed context, and the next turn simply resumes that session. If Claude cannot compact (no live session yet, an error, a stall) the driver falls back to a one-shot summary and the next turn starts a fresh Claude session from DSH's compacted history. Set `nativeCompaction: false` to always use the fallback.
+
+DSH may ask for a summary more than once without a user turn in between (it retries when a summary is not small enough). Claude is compacted once; repeat requests reuse the same summary until the session runs another turn.
+
 ## Install
 
 Prerequisite: the `claude` CLI is installed and logged in (or the SDK's platform binary is present).
@@ -418,6 +424,7 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 |---|---|---|
 | `provider` | `claude-code` | 接管的路由名 |
 | `model` | `fable` | 默认模型 |
+| `nativeCompaction` | `true` | DSH 压缩时让 Claude Code 用自己的 `/compact` 压缩同一会话（同一 session id），并把 Claude 的摘要作为 DSH 摘要；失败时回落为一次性摘要 + 新会话 |
 | `models` | _(unset)_ | 仅在需要固定/改名时设置；默认由 Claude Code 自己的 `supportedModels()` 提供名称（如 `Sonnet 5.5`）、版本与上下文窗口，新模型发布后自动出现 |
 | `modelRefreshMs` | `600000` | 成功发现后的缓存时长；到期自动刷新，新模型无需重启即出现 |
 | `modelRetryMs` | `30000` | 发现失败后的重试间隔（不会永久缓存失败结果） |

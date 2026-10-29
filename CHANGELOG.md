@@ -2,6 +2,24 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.0] - 2026-10-29
+
+### Added
+- **登录过期自愈（relogin）**。回合以 `AUTH` 失败（OAuth 过期、未登录、无效 key）时，
+  驱动自己走完整个重新登录流程，而不是丢给用户一条死胡同报错：
+  - 拉起官方 `claude auth login`（管道 stdio，无需 PTY），从输出里解析 OSC-8 包裹的
+    登录 URL，显示在思考区；同机浏览器由 CLI 自带回调完成登录，异地则用
+    `/claude-login <code>` 回填页面上的 code。
+  - 登录成功后**自动重试该回合一次**；登录失败、超时（`loginWaitMs`，默认 5 分钟）、
+    重试后仍 `AUTH` 都保留原错误并追加 `/claude-login` 提示，绝不循环。
+  - 环境里设了 `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` 时重新登录覆盖不了它，
+    直接说明原因而不是拉起登录。
+  - 新增 `/claude-login [code|status|cancel]` 命令与 `autoLogin`（默认 true）开关。
+  - 合规不变：只调用用户自己的官方 CLI，**不读取、不保存、不转发任何 token**。
+- `classifyFailure` 的 `AUTH` 判定扩展到 `Failed to authenticate`、`OAuth … expired`、
+  `Not logged in`、`Invalid API key`、`Please run /login`；SDK error result 的
+  `errors[]` 现在也会进入失败文案。
+
 ## [0.14.1] - 2026-10-29
 
 ### Tests

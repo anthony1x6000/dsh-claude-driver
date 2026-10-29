@@ -136,6 +136,7 @@ DSH（DeepSeek Harness）宿主插件：让 DSH 会话把**本地 Claude Code �
 | subagent provider | 填上官方预留的 `claude-code` subagent 占位缝（`subagent_claude_code` 工具） |
 | 跨模型历史兼容 | 补写配对 assistant tool-call 事件，切回 deepseek 不报 400 |
 | resume 链治理 | 模型带 contextWindow（启用 DSH 自动压缩）+ 压缩后清链 + `/claude-fresh` 命令 |
+| 登录过期自愈 | 回合因 Claude 登录过期/缺失失败（`AUTH`）时，自动拉起官方 `claude auth login`，把登录 URL 显示在思考区，登录完成后自动重试该回合**一次**；`/claude-login [code\|status\|cancel]` 手动入口；`autoLogin: false` 关闭自动流程 |
 | 后台任务保活 | `waitForBackgroundTasks`：持有本步直到 Claude Code 自己的后台任务跑完，否则它们会在回合结束后被杀 |
 | 子代理抢救 | `harvestOrphanedSubagents`：随进程一起死掉的子代理，下一轮从磁盘 transcript 捞回它们的产出 |
 | 可执行文件回退 | SDK 原生二进制缺失时回退到全局 `claude`（`~/.local/bin/claude`） |

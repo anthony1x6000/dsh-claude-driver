@@ -56,8 +56,11 @@ async function runTurn(ctx, tools, settings = {}) {
 test('a DSH-registered tool is exposed on Claude\'s MCP server', async () => {
   const { ctx } = harness()
   const { captured } = await runTurn(ctx, [FAKE_TOOL])
-  assert.equal(captured.mcpServers.length, 1)
-  const server = captured.mcpServers[0]
+  // SDK contract: Options.mcpServers is Record<name, config>. An array would
+  // register the server as "0" and Claude would see mcp__0__<tool>.
+  assert.ok(!Array.isArray(captured.mcpServers), 'mcpServers is a name-keyed record')
+  assert.deepEqual(Object.keys(captured.mcpServers), ['dsh-tools'])
+  const server = captured.mcpServers['dsh-tools']
   assert.equal(server.type, 'sdk')
   assert.equal(server.name, 'dsh-tools')
   const registered = server.instance?._registeredTools
@@ -67,7 +70,7 @@ test('a DSH-registered tool is exposed on Claude\'s MCP server', async () => {
 test('Claude calling the bridged tool executes it inside DSH and gets the result', async () => {
   const { ctx, executed, agent } = harness()
   const { captured } = await runTurn(ctx, [FAKE_TOOL])
-  const registered = captured.mcpServers[0].instance?._registeredTools
+  const registered = captured.mcpServers['dsh-tools'].instance?._registeredTools
   assert.ok(registered?.[FAKE_TOOL.name], 'SDK MCP server exposes the tool handler')
   const out = await registered[FAKE_TOOL.name].handler({ text: 'hello', times: 2 }, {})
   assert.equal(executed.length, 1, 'DSH tools.execute ran exactly once')

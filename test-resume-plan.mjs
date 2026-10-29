@@ -29,7 +29,7 @@ const baseOptions = {
   const plan = planPrompt(baseOptions, settings, sessions)
   assert.equal(plan.mode, 'fresh')
   assert.equal(plan.chainKey, 'dsh-1')
-  assert.ok(plan.prompt.includes('<dsystem>\nSYS-PROMPT\n</dsystem>'), 'fresh carries system')
+  assert.ok(!plan.prompt.includes('SYS-PROMPT'), 'system prompt travels as the Claude system prompt, not in the transcript')
   assert.ok(plan.prompt.includes('q1') && plan.prompt.includes('r1') && plan.prompt.includes('q2'), 'fresh carries full history')
 }
 
@@ -57,7 +57,7 @@ sessions.set('dsh-1', 'sdk-session-abc')
 {
   const plan = planPrompt({ ...baseOptions, messages: [u('q1'), a('r1')] }, settings, sessions)
   assert.equal(plan.mode, 'fresh')
-  assert.ok(plan.prompt.includes('SYS-PROMPT'))
+  assert.ok(!plan.prompt.includes('SYS-PROMPT'), 'system prompt rides Claude\'s system prompt (see test/dsh-context.test.mjs)')
 }
 
 // --- planPrompt: internal purposes never resume nor join the chain ---

@@ -191,7 +191,7 @@ async function captureSdkOptions(settings, options) {
     { resumeChain: false, nativeToolCards: false, queryImpl },
   )) chunks.push(chunk)
   assert.equal(typeof captured.canUseTool, 'function', 'bridge alone still installs canUseTool')
-  assert.ok(Array.isArray(captured.mcpServers) && captured.mcpServers.length === 1, 'bridge MCP server installed')
+  assert.deepEqual(Object.keys(captured.mcpServers ?? {}), ['dsh-tools'], 'bridge MCP server installed under its name')
   const bridged = await captured.canUseTool('mcp__dsh-tools__pwsh', input, {})
   assert.equal(bridged.behavior, 'allow', 'bridged tool allowed (DSH pipeline owns approval)')
   const builtin = await captured.canUseTool('Bash', input, {})

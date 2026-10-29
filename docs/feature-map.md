@@ -36,7 +36,8 @@ Status: **direct** · **bridged** (DSH runs it; Claude calls it) · **limited** 
 | Claude Code capability | Status | How |
 |---|---|---|
 | Streamed text and thinking | direct | Token-level text and reasoning blocks; redacted thinking shows a live heartbeat. |
-| Built-in tools (Bash, Read, Edit, Write, Grep, Agent, ...) | direct | Progress and failures narrated in the reasoning block; optional DSH approval. |
+| Built-in tools (Bash, Read, Edit, Write, Grep, Glob, WebFetch, WebSearch, ...) | direct | Rendered as DSH's own tool cards (`bash`, `read`, `edit`, `write`, `grep`, `glob`, `web_fetch`, `web_search`; others as a generic card), opened when the tool starts and closed with its output (Bash results end with DSH's `[exit code: N]` marker). A card still open when the turn ends is closed as interrupted. Optional DSH approval. |
+| Liveness (no silent gaps) | direct | While Claude or a tool is quiet, a throttled "still working Ns — <tool: subject>" pulse appears in the thinking block (`pulseMs`); Claude's API retries (from the second) and its own compaction are announced as they happen. |
 | Background tasks | direct | DSH jobs (see above). |
 | Native compaction (`compact_boundary`) | direct | Driven by DSH compaction; Claude's own automatic compaction is reported as a note. |
 | API errors (auth expired, billing, rate limit, overloaded, invalid request) | direct | End the DSH turn as a typed DSH error (`AUTH`, `RATE_LIMIT`, `SERVER`, `INVALID_REQUEST`) instead of an answer; auth errors say to run `claude /login`. |

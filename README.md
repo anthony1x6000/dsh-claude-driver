@@ -55,7 +55,7 @@ A turn always ends now. If Claude Code cannot reach the Anthropic API (a configu
 
 ## Models
 
-The picker is built from Claude Code's own model list, so it shows the real names and versions (for example **Sonnet 5.5**, **Opus 5.5**, **Haiku 5.5**, **Fable 5.1**) plus pinned older versions such as Opus 4.8. It refreshes every 10 minutes while DSH runs, so a new release appears without reinstalling or restarting; if discovery fails it falls back to the `fable`/`sonnet`/`opus`/`haiku` aliases and retries. The aliases always track the newest version of each family. Pin or rename entries with `models` in your profile patch.
+The picker is built from Claude Code's own model list, so it shows the real names and versions (for example **Sonnet 5.5**, **Opus 5.5**, **Haiku 5.5**, **Fable 5.1**) plus pinned older versions such as Opus 4.8. It refreshes every 10 minutes while DSH runs, so a new release appears without reinstalling or restarting; if discovery fails it falls back to the `fable`/`sonnet`/`opus`/`haiku` aliases and retries. The bare aliases `fable`, `sonnet`, `opus` and `haiku` always resolve to the newest model of that family (today Fable 5.1, Sonnet 5.5, Opus 5.5, Haiku 5.5). The resolution happens inside the Claude CLI, so when a new generation ships the alias moves to it with no plugin change; there is no separate `*-latest` entry. Choose a versioned entry such as `claude-opus-4-8` only when you want to pin a specific model. Labels come from your account and CLI version, so they can differ slightly between machines. Pin or rename entries with `models` in your profile patch.
 
 ## Install
 

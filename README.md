@@ -53,6 +53,10 @@ For the full feature list, tuning options and design notes, see the sections bel
 
 A turn always ends now. If Claude Code cannot reach the Anthropic API (a configured `proxy` that is not running, no network, a firewall) the turn fails within seconds with `cannot reach the Anthropic API ... check that the proxy is running`. Earlier versions shipped a default `proxy` of `http://127.0.0.1:7897`; with nothing listening there the CLI retried silently for minutes and the UI spun forever. There is no default proxy any more: set `proxy` only if you need one.
 
+## Models
+
+The picker is built from Claude Code's own model list, so it shows the real names and versions (for example **Sonnet 5.5**, **Opus 5.5**, **Haiku 5.5**, **Fable 5.1**) plus pinned older versions such as Opus 4.8. It refreshes every 10 minutes while DSH runs, so a new release appears without reinstalling or restarting; if discovery fails it falls back to the `fable`/`sonnet`/`opus`/`haiku` aliases and retries. The aliases always track the newest version of each family. Pin or rename entries with `models` in your profile patch.
+
 ## Install
 
 Prerequisite: the `claude` CLI is installed and logged in (or the SDK's platform binary is present).
@@ -400,7 +404,10 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 |---|---|---|
 | `provider` | `claude-code` | 接管的路由名 |
 | `model` | `fable` | 默认模型 |
-| `models` | 四个带 contextWindow 的条目 | 选择器目录 |
+| `models` | _(unset)_ | 仅在需要固定/改名时设置；默认由 Claude Code 自己的 `supportedModels()` 提供名称（如 `Sonnet 5.5`）、版本与上下文窗口，新模型发布后自动出现 |
+| `modelRefreshMs` | `600000` | 成功发现后的缓存时长；到期自动刷新，新模型无需重启即出现 |
+| `modelRetryMs` | `30000` | 发现失败后的重试间隔（不会永久缓存失败结果） |
+| `discoveryTimeoutMs` | `15000` | 单次发现超时，超时回落到别名列表，不会卡住选择器 |
 | `effort` | `medium` | 思考强度 |
 | `maxTurns` | `100` | 单步内部工具循环上限 |
 | `permissionMode` | `acceptEdits` | Claude Code 权限模式 |

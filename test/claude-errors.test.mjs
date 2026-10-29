@@ -1,0 +1,64 @@
+// Claude Code -> DSH: an API error Claude reports as an assistant message
+// (auth expired, billing, rate limit, ...) must end the DSH turn as an error
+// with a DSH failure code, never as an ordinary answer. Real shape captured
+// from an expired OAuth session.
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { streamClaudeChunks } from '../lib/index.js'
+
+const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }
+const opts = { provider: 'claude-code', model: 'sonnet', messages: [{ role: 'user', content: [{ type: 'text', text: 'q' }] }] }
+const apiError = (error, text) => [
+  { type: 'assistant', session_id: 's', error, message: { content: [{ type: 'text', text }] } },
+  { type: 'result', subtype: 'success', is_error: true, session_id: 's', result: text, usage: { input_tokens: 0, output_tokens: 0 } },
+]
+async function run(events) {
+  const queryImpl = () => (async function* () { for (const e of events) yield e })()
+  const chunks = []
+  for await (const c of streamClaudeChunks(ctx, opts, { resumeChain: false, queryImpl })) chunks.push(c)
+  return chunks
+}
+
+for (const [error, code, text] of [
+  ['authentication_failed', 'AUTH', 'Failed to authenticate: OAuth session expired and could not be refreshed'],
+  ['billing_error', 'AUTH', 'Credit balance is too low'],
+  ['rate_limit', 'RATE_LIMIT', 'You have hit your usage limit'],
+  ['overloaded', 'SERVER', 'Overloaded'],
+  ['invalid_request', 'INVALID_REQUEST', 'prompt is too long'],
+]) {
+  test(`Claude "${error}" ends the DSH turn as a ${code} error, not as an answer`, async () => {
+    const chunks = await run(apiError(error, text))
+    const finish = chunks.at(-1)
+    assert.equal(finish.type, 'finish')
+    assert.equal(finish.reason.kind, 'error')
+    assert.equal(finish.reason.failure.code, code)
+    assert.match(finish.reason.failure.message, new RegExp(text.slice(0, 12)))
+    assert.equal(chunks.filter((c) => c.type === 'text-delta').map((c) => c.text).join(''), '', 'error text is not streamed as the answer')
+  })
+}
+
+test('an auth error tells the user how to fix it', async () => {
+  const finish = (await run(apiError('authentication_failed', 'Failed to authenticate: OAuth session expired'))).at(-1)
+  assert.match(finish.reason.failure.message, /claude (\/)?login|log in/i)
+})
+
+test('a normal answer is unaffected', async () => {
+  const chunks = await run([
+    { type: 'assistant', session_id: 's', message: { content: [{ type: 'text', text: 'fine' }] } },
+    { type: 'result', subtype: 'success', session_id: 's', result: 'fine', usage: { input_tokens: 1, output_tokens: 1 } },
+  ])
+  assert.equal(chunks.at(-1).reason.kind, 'stop')
+})
+
+test('an auth failure on a resumed chain is not retried as a fresh session', async () => {
+  const { getResumeSessions } = await import('../lib/index.js')
+  getResumeSessions().set('dsh-auth', 'claude-auth')
+  let calls = 0
+  const queryImpl = () => { calls += 1; return (async function* () { for (const e of apiError('authentication_failed', 'Failed to authenticate')) yield e })() }
+  const chunks = []
+  for await (const c of streamClaudeChunks(ctx, { ...opts, sessionId: 'dsh-auth', messages: [{ role: 'user', content: [{ type: 'text', text: 'a' }] }, { role: 'assistant', content: [{ type: 'text', text: 'b' }] }, { role: 'user', content: [{ type: 'text', text: 'c' }] }] }, { resumeChain: true, queryImpl })) chunks.push(c)
+  assert.equal(calls, 1, 'auth is not a resume problem')
+  assert.equal(getResumeSessions().get('dsh-auth'), 'claude-auth', 'chain kept for after re-login')
+  assert.equal(chunks.at(-1).reason.failure.code, 'AUTH')
+  getResumeSessions().delete('dsh-auth')
+})

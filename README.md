@@ -71,6 +71,10 @@ The mode is fixed when a Claude Code process starts, so a switch applies from th
 
 **Background tasks.** Tasks Claude Code starts itself (`Bash` with `run_in_background`, background agents, monitors) are mirrored into DSH as jobs of kind `claude-task`: they appear in `job_list` and the jobs panel, `job_output` returns their progress and final output, and `job_kill` stops the real Claude task. A job settles as completed, failed or killed to match Claude's own notice, and any job still open when the Claude session ends is settled as killed rather than left running. The existing in-reply status narration is unchanged. Set `mirrorBackgroundJobs: false` to turn the mirror off.
 
+## Feature map
+
+Every DSH feature and how it reaches Claude Code (and back) is listed in [docs/feature-map.md](docs/feature-map.md): what is driven natively, what is bridged as a DSH tool, and what does not apply.
+
 ## Compaction
 
 DSH's `/compact` and its automatic compaction both compact the **live Claude Code session** with Claude's own `/compact`, on the same Claude session id. Claude's summary becomes the summary DSH records, so DSH and Claude hold the same condensed context, and the next turn simply resumes that session. If Claude cannot compact (no live session yet, an error, a stall) the driver falls back to a one-shot summary and the next turn starts a fresh Claude session from DSH's compacted history. Set `nativeCompaction: false` to always use the fallback.
@@ -424,6 +428,7 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 |---|---|---|
 | `provider` | `claude-code` | 接管的路由名 |
 | `model` | `fable` | 默认模型 |
+| `preferDshTools` | `true` | DSH 提供同类功能时（计划模式、定时、待办、网页搜索/抓取），隐藏 Claude Code 的重复内置工具（`EnterPlanMode`/`ExitPlanMode`、`Cron*`、`TodoWrite`、`WebSearch`/`WebFetch`），以 DSH 为准 |
 | `nativeCompaction` | `true` | DSH 压缩时让 Claude Code 用自己的 `/compact` 压缩同一会话（同一 session id），并把 Claude 的摘要作为 DSH 摘要；失败时回落为一次性摘要 + 新会话 |
 | `models` | _(unset)_ | 仅在需要固定/改名时设置；默认由 Claude Code 自己的 `supportedModels()` 提供名称（如 `Sonnet 5.5`）、版本与上下文窗口，新模型发布后自动出现 |
 | `modelRefreshMs` | `600000` | 成功发现后的缓存时长；到期自动刷新，新模型无需重启即出现 |

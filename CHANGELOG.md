@@ -2,6 +2,24 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.12.0] - 2026-10-29
+
+### Added
+- **`docs/feature-map.md`**: every DSH feature mapped to Claude Code and back (direct / bridged / limited / n/a), kept honest by `test/feature-map.test.mjs`.
+- **DSH system prompt → Claude's system prompt.** DSH's system prompt (persona, plan-mode policy, skills index, tool guidance) is appended to Claude Code's own `claude_code` preset and re-rendered every request (`snapshot: false`), so changes such as entering plan mode reach a resumed session. Previously it was replayed as a `<User>` message on the first turn only. Prewarmed processes are keyed on it.
+- **DSH features own their Claude duplicates.** While the DSH tool is offered, Claude's `EnterPlanMode`/`ExitPlanMode`, `CronCreate`/`CronList`/`CronDelete`, `TodoWrite`, `WebSearch`, `WebFetch` are withheld, so plan review, schedules, todos and web results go through DSH. `preferDshTools: false` keeps both.
+- **Claude events surface in DSH**: permission denials, model refusal fallbacks, notifications and Claude's own context compaction appear as notes in the reasoning block.
+
+### Fixed
+- **Bridged DSH tools were registered as MCP server `0`** (`mcp__0__bash`): `mcpServers` was an array, but the SDK takes a name-keyed record. They are now `mcp__dsh-tools__*`, matching the approval bridge and native tool cards.
+- **Claude API errors were shown as answers.** An expired login, billing problem, rate limit, overload or invalid request now ends the DSH turn as a typed error (`AUTH`, `RATE_LIMIT`, `SERVER`, `INVALID_REQUEST`); auth errors say to run `claude /login`, and the resume chain is kept instead of being thrown away.
+- **DSH file attachments** reached Claude as nothing: DSH converts file blocks to readable-path handles only after the `llm/stream` waterfall the driver intercepts. The driver now builds the same handle from DSH's attachment and filesystem services.
+- DSH `developer` and `tool` role messages are rendered as harness context and tool results instead of as the user.
+
+### Tests
+- `test/dsh-context.test.mjs`, `test/e2e-dsh-context.test.mjs` (real Claude CLI), `test/native-overlap.test.mjs`, `test/claude-events.test.mjs`, `test/claude-errors.test.mjs`, `test/feature-map.test.mjs`; `test-resume-plan`, `test-cross-model-and-fresh` and `test-client-style` now run in CI. Each new connection was mutation-checked (removing it fails its tests).
+- Verified on a real DSH host (headless profile, real Claude CLI against a local Anthropic API double): DSH's system prompt lands in Claude's system prompt and not the transcript, AGENTS.md is delivered, tools are `mcp__dsh-tools__*`, and a real DSH file attachment is read by Claude.
+
 ## [0.11.0] - 2026-10-28
 
 ### Fixed

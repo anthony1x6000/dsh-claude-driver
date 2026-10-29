@@ -191,11 +191,12 @@ const toolSchemas = [
   chain.delete('dsh-sess-B')
 
   // /claude-fresh registered through the commands service (no inject on mocks)
-  assert.equal(registered.length, 1)
-  assert.equal(registered[0].name, 'claude-fresh')
-  assert.match(registered[0].name, /^[a-z][a-z0-9_-]*$/, 'dsh-commands COMMAND_NAME contract')
-  assert.ok(typeof registered[0].description === 'string' && registered[0].description.trim().length > 0)
-  assert.equal(typeof registered[0].handler, 'function')
+  assert.deepEqual(registered.map((c) => c.name).sort(), ['claude-doctor', 'claude-fresh'])
+  for (const command of registered) {
+    assert.match(command.name, /^[a-z][a-z0-9_-]*$/, 'dsh-commands COMMAND_NAME contract')
+    assert.ok(typeof command.description === 'string' && command.description.trim().length > 0)
+    assert.equal(typeof command.handler, 'function')
+  }
 }
 
 // --- B3: /claude-fresh handler semantics -------------------------------------

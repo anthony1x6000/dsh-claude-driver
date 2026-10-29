@@ -75,6 +75,17 @@ The mode is fixed when a Claude Code process starts, so a switch applies from th
 
 Every DSH feature and how it reaches Claude Code (and back) is listed in [docs/feature-map.md](docs/feature-map.md): what is driven natively, what is bridged as a DSH tool, and what does not apply.
 
+## Dependencies and automatic CLI install
+
+`dsh plugin add dsh-claude-driver` brings the Claude Agent SDK and `zod` with it. The Claude Code **CLI binary** normally comes with the SDK as an optional dependency, but an install with `--omit=optional`, a pruned store or an unusual libc can leave it missing. The driver handles that itself:
+
+1. **It looks first.** In order: your configured `pathToClaudeCodeExecutable`, the SDK's bundled binary, a previous private install, `~/.local/bin/claude` and `~/.claude/local/claude`, then `claude` on `PATH`. If any of them works, **nothing is installed and no process is started**.
+2. **Only if none exists** it installs the exact SDK-pinned platform package (`@anthropic-ai/claude-agent-sdk-<platform>@<sdk version>`) with `npm` (or `pnpm` if there is no `npm`) into its **own** directory, `$DSH_HOME/storages/claude-driver/cli`. Never global, never `sudo`, never an npm install script, and your profile and your own npm/pnpm state are untouched. The result is verified by running `--version`.
+3. **Safe to repeat.** Concurrent starts install once (lock, stale-safe, bounded wait). A failed install (offline, no npm) is remembered for an hour and is not retried on every turn. A configured path that does not exist is reported, never silently replaced.
+4. **When it runs:** once in the background at plugin load, and before a turn that has no CLI (the turn then continues with the installed binary, or ends with an error that says what to do). Set `autoInstallCli: false` to turn installing off; it still reports.
+
+`/claude-doctor` shows Node, the SDK, `zod`, the CLI (version, where it was found) and whether you are logged in, with the exact fix for anything missing. `/claude-doctor install` installs a missing CLI on demand (even after a recent failure) and changes nothing when it is already there. The installer cannot log you in: run `claude /login` once.
+
 ## Compaction
 
 DSH's `/compact` and its automatic compaction both compact the **live Claude Code session** with Claude's own `/compact`, on the same Claude session id. Claude's summary becomes the summary DSH records, so DSH and Claude hold the same condensed context, and the next turn simply resumes that session. If Claude cannot compact (no live session yet, an error, a stall) the driver falls back to a one-shot summary and the next turn starts a fresh Claude session from DSH's compacted history. Set `nativeCompaction: false` to always use the fallback.
@@ -430,6 +441,7 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 | `model` | `fable` | 默认模型 |
 | `pulseMs` | `10000` | 静默多久后显示「仍在工作」心跳（之后间隔逐步拉长到 60 秒封顶）；`0` 关闭 |
 | `builtinToolCards` | `true` | Claude Code 内置工具（Bash/Read/Edit/Write/Grep/Glob/WebFetch/WebSearch…）渲染为 DSH 原生工具卡片，而不是思考块里的文字行；`false` 恢复文字旁白 |
+| `autoInstallCli` | `true` | 本机没有可用的 Claude Code CLI 时才自动安装（先检查：配置路径 → SDK 自带 → 私有安装 → `~/.local/bin` → PATH）；`false` 只报告不安装 |
 | `preferDshTools` | `true` | DSH 提供同类功能时（计划模式、定时、待办、网页搜索/抓取），隐藏 Claude Code 的重复内置工具（`EnterPlanMode`/`ExitPlanMode`、`Cron*`、`TodoWrite`、`WebSearch`/`WebFetch`），以 DSH 为准 |
 | `nativeCompaction` | `true` | DSH 压缩时让 Claude Code 用自己的 `/compact` 压缩同一会话（同一 session id），并把 Claude 的摘要作为 DSH 摘要；失败时回落为一次性摘要 + 新会话 |
 | `models` | _(unset)_ | 仅在需要固定/改名时设置；默认由 Claude Code 自己的 `supportedModels()` 提供名称（如 `Sonnet 5.5`）、版本与上下文窗口，新模型发布后自动出现 |

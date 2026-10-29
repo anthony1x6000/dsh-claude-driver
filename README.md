@@ -57,6 +57,20 @@ A turn always ends now. If Claude Code cannot reach the Anthropic API (a configu
 
 The picker is built from Claude Code's own model list, so it shows the real names and versions (for example **Sonnet 5.5**, **Opus 5.5**, **Haiku 5.5**, **Fable 5.1**) plus pinned older versions such as Opus 4.8. It refreshes every 10 minutes while DSH runs, so a new release appears without reinstalling or restarting; if discovery fails it falls back to the `fable`/`sonnet`/`opus`/`haiku` aliases and retries. The bare aliases `fable`, `sonnet`, `opus` and `haiku` always resolve to the newest model of that family (today Fable 5.1, Sonnet 5.5, Opus 5.5, Haiku 5.5). The resolution happens inside the Claude CLI, so when a new generation ships the alias moves to it with no plugin change; there is no separate `*-latest` entry. Choose a versioned entry such as `claude-opus-4-8` only when you want to pin a specific model. Labels come from your account and CLI version, so they can differ slightly between machines. Pin or rename entries with `models` in your profile patch.
 
+## Permissions and background tasks follow DSH
+
+**Permissions.** The Claude Code permission mode is derived from the DSH session on every turn, so what you set in DSH (the permission selector, `/permission`) is what Claude Code runs under:
+
+| DSH sandbox mode | Claude Code permission mode |
+|---|---|
+| `danger-full-access` (the "full access" preset) | `bypassPermissions` |
+| `workspace-write` | `acceptEdits` |
+| `read-only` | `plan` |
+
+The mode is fixed when a Claude Code process starts, so a switch applies from the next turn; a prewarmed process spawned under the old mode is discarded instead of reused. The same mapping applies to the `claude-code` subagent, using the delegating session. An explicit `permissionMode` in your profile patch always wins, and `followDshPermissions: false` restores the fixed `acceptEdits` default. DSH tool calls bridged into Claude Code are still decided by DSH's own sandbox and approval, whatever mode Claude runs under. Under full access Claude's built-in tools no longer ask, so `approveBuiltinTools` has nothing to route (the same as the existing `bypassPermissions` caveat).
+
+**Background tasks.** Tasks Claude Code starts itself (`Bash` with `run_in_background`, background agents, monitors) are mirrored into DSH as jobs of kind `claude-task`: they appear in `job_list` and the jobs panel, `job_output` returns their progress and final output, and `job_kill` stops the real Claude task. A job settles as completed, failed or killed to match Claude's own notice, and any job still open when the Claude session ends is settled as killed rather than left running. The existing in-reply status narration is unchanged. Set `mirrorBackgroundJobs: false` to turn the mirror off.
+
 ## Install
 
 Prerequisite: the `claude` CLI is installed and logged in (or the SDK's platform binary is present).
@@ -411,6 +425,9 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 | `effort` | `medium` | 思考强度 |
 | `maxTurns` | `100` | 单步内部工具循环上限 |
 | `permissionMode` | `acceptEdits` | Claude Code 权限模式 |
+| `permissionMode` | _(unset)_ | 未设置时**跟随 DSH 会话权限**：`danger-full-access`→`bypassPermissions`，`workspace-write`→`acceptEdits`，`read-only`→`plan`。显式设置则始终优先 |
+| `followDshPermissions` | `true` | 设为 `false` 则固定使用旧默认 `acceptEdits`，不再读取 DSH 权限 |
+| `mirrorBackgroundJobs` | `true` | 把 Claude Code 自己的后台任务镜像为 DSH job（`job_list` / `job_output` / `job_kill` 可见） |
 | `proxy` | _(none)_ | 代理地址；默认不设置。只在出网 IP 被 Anthropic 403 时配置，且必须真有进程在监听 |
 | `startupTimeoutMs` | `120000` | Claude Code 启动后这么久没有任何输出就判定卡死并报错 |
 | `apiRetryLimit` | `3` | 连续网络层 API 重试达到此数即判定不可达并报错（不再无限转圈） |

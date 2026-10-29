@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.14.1] - 2026-10-29
+
+### Tests
+- `test/task-notes-turns.test.mjs`: task notes across turns. A queued message on the same chain does not repeat the previous turn's outcome; a model switch (DSH aborts the step) reports the live task as ended with the turn, never failed; an outcome that arrived before the abort keeps its own wording; tasks are de-duplicated by id, not text. Regression guards for the 0.13.1 fixes; no behaviour change.
+
 ## [0.14.0] - 2026-10-29
 
 ### Added

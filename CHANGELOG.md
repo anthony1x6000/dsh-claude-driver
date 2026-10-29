@@ -2,6 +2,17 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.13.1] - 2026-10-29
+
+### Fixed
+- **Wrong "后台任务失败" notes.** A plain foreground command that merely ran long and exited non-zero (for example `timeout 60 node --test …` → exit 143) raised a `failed` task notice in the CLI, and the driver reported it as a *background task failure* even though the call had already returned its own error. Only real, top-level background tasks are now reported, once each. Foreground tasks, a task whose own tool call already returned an error, a subagent's inner tasks (`parent_task_id`), and repeated notices are skipped. The same rules now apply to the `claude-code` subagent provider, via the shared `lib/task-ledger.js`.
+- **A task the user or CLI stopped is reported as "已停止", not as a failure.** A task the driver itself stopped at the turn deadline is described by the existing "possibly terminated" line instead of also being listed as failed.
+- **Interrupting a turn no longer says the background task is "仍在运行".** Interrupting tears Claude's process down and the task dies with it (verified: the task's side effect never happened); the note now says "本轮被中断，随之终止的后台任务".
+- A subagent's inner tasks no longer show up in the "still running" list.
+
+### Tests
+- `test/task-notes.test.mjs`, `test/task-notes-subagent.test.mjs`, `test/e2e-task-notes.test.mjs` (real CLI: long failing foreground command, failing/succeeding/stuck background tasks, user interrupt). Each rule was mutation-checked. Verified on a real DSH host.
+
 ## [0.13.0] - 2026-10-29
 
 ### Added

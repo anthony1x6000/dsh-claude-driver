@@ -22,7 +22,7 @@ Status: **direct** · **bridged** (DSH runs it; Claude calls it) · **limited** 
 | Scheduling, todo list, web search/fetch | bridged | DSH tools are used; Claude's duplicates (`Cron*`, `TodoWrite`, `WebSearch`, `WebFetch`) are withheld while the DSH tool is offered (`preferDshTools: false` keeps both). |
 | Goals (`/goal`, goal rounds) | bridged | Goal rounds start ordinary DSH turns, which run on Claude; goal tools are bridged. |
 | Subagents (DSH `subagent`, delegation) | direct | A `claude-code` subagent provider runs DSH subagents on Claude Code. |
-| Background jobs (`job_list`/`job_output`/`job_kill`, jobs panel) | direct | Claude's own background tasks are mirrored as DSH `claude-task` jobs; `job_kill` stops the real task. |
+| Background jobs (`job_list`/`job_output`/`job_kill`, jobs panel) | direct | Claude's own background tasks are mirrored as DSH `claude-task` jobs; `job_kill` stops the real task. Only real top-level background tasks are reported in the reply (not foreground commands, a call's own error, or a subagent's inner tasks); stopped, failed, deadline and interrupted endings each have their own wording. |
 | File attachments | direct | DSH file blocks become the same readable-path handle DSH gives every model; Claude reads them with its file tools. |
 | Image attachments | direct | Sent to Claude as native image blocks. |
 | Ask-user questions | bridged | DSH `ask_user_question` card; Claude's own `AskUserQuestion` is withheld while it is offered. |

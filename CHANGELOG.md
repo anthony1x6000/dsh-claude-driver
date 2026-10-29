@@ -2,6 +2,18 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.14.0] - 2026-10-29
+
+### Added
+- **The Claude Code CLI is installed automatically when it is missing — and only then.** The driver first looks for a usable CLI (configured path → SDK-bundled → previous private install → `~/.local/bin/claude` / `~/.claude/local/claude` → `PATH`); if one exists it installs nothing and starts no process. If none exists it installs the SDK-pinned platform package with `npm` (or `pnpm`) into its own directory `$DSH_HOME/storages/claude-driver/cli`: never global, never `sudo`, no npm install script (pnpm refuses those for git-hosted plugins), nothing in your profile or your own npm state touched. The installed binary is verified with `--version`.
+- Safe by construction: one installer at a time (in-process sharing plus a stale-safe lock with a bounded wait for another process), bounded by a timeout, a failed install remembered for an hour (no retry on every turn), a configured-but-missing path reported rather than replaced, `autoInstallCli: false` for report-only.
+- Runs once in the background at plugin load, and before a turn that has no CLI (the turn continues with the installed binary and says so, or ends with an actionable error).
+- `/claude-doctor` reports Node, the SDK, `zod`, the CLI (version and source) and login state with the exact fix for anything missing; `/claude-doctor install` installs on demand.
+- `resolveClaudeExecutable` now also searches the private install and `PATH`.
+
+### Tests
+- `test/deps.test.mjs`, `test/deps-wiring.test.mjs`. Verified end to end: a real `npm` install of the CLI into a clean prefix; a real DSH run on a plugin install whose SDK binary was genuinely absent and with `claude` hidden from `PATH` installed the CLI, answered, and a second run installed nothing and did not touch the state file; on a machine that already has the CLI the check spawns no process and writes nothing. Each guard rail was mutation-checked.
+
 ## [0.13.1] - 2026-10-29
 
 ### Fixed

@@ -26,6 +26,7 @@ Status: **direct** · **bridged** (DSH runs it; Claude calls it) · **limited** 
 | File attachments | direct | DSH file blocks become the same readable-path handle DSH gives every model; Claude reads them with its file tools. |
 | Image attachments | direct | Sent to Claude as native image blocks. |
 | Ask-user questions | bridged | DSH `ask_user_question` card; Claude's own `AskUserQuestion` is withheld while it is offered. |
+| Setup (`dsh plugin add`, `/claude-doctor`) | direct | The CLI is installed automatically only when missing (see README); `/claude-doctor` reports every dependency and the login state. |
 | Session resume / fork | direct | One Claude session per DSH session (resume chain); `/claude-fresh` resets it. |
 | Session title | bridged | DSH's title request runs on Claude as a one-shot (not on the user's chain). |
 | Token meter / context % | direct | Real per-request usage from Claude; context windows from Claude's model info. |

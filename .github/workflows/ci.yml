@@ -69,3 +69,28 @@ jobs:
       - run: mkdir -p /tmp/claude-pkg && npm pack --pack-destination /tmp/claude-pkg
       - run: $DSH plugin --profile ci-claude-pack add /tmp/claude-pkg/*.tgz
       - run: $DSH --profile ci-claude-pack --dump-config | grep claude-driver
+
+  no-binary-install:
+    # The plugin installed WITHOUT the SDK's optional platform binary must still
+    # find nothing to run until the driver installs it, and then install it once.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --omit=optional --no-audit --no-fund
+      - run: test ! -e node_modules/@anthropic-ai/claude-agent-sdk-linux-x64
+      - name: Install the CLI through the driver, then check it again installs nothing
+        run: |
+          export DSH_HOME=$RUNNER_TEMP/dsh
+          node -e "
+          import('./lib/deps.js').then(async (m) => {
+            const env = { ...process.env, PATH: '/usr/bin:/bin:' + require('node:path').dirname(process.execPath) }
+            const first = await m.ensureClaudeCli({ env })
+            console.log('first :', JSON.stringify(first))
+            if (first.action !== 'installed') process.exit(1)
+            const second = await m.ensureClaudeCli({ env })
+            console.log('second:', JSON.stringify(second))
+            if (second.action !== 'none') process.exit(2)
+          })"

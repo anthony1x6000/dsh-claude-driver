@@ -191,7 +191,7 @@ const toolSchemas = [
   chain.delete('dsh-sess-B')
 
   // /claude-fresh registered through the commands service (no inject on mocks)
-  assert.deepEqual(registered.map((c) => c.name).sort(), ['claude-doctor', 'claude-fresh'])
+  assert.deepEqual(registered.map((c) => c.name).sort(), ['claude-doctor', 'claude-fresh', 'claude-login'])
   for (const command of registered) {
     assert.match(command.name, /^[a-z][a-z0-9_-]*$/, 'dsh-commands COMMAND_NAME contract')
     assert.ok(typeof command.description === 'string' && command.description.trim().length > 0)

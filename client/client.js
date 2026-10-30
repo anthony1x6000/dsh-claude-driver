@@ -90,8 +90,9 @@ window.__ModuleLoader__.load({
 		];
 
 		/**
-		 * The bar's content, as plain data: the session price ("n/a" when unpriced,
-		 * null before any turn) and the plan windows that Claude reports, rounded.
+		 * The bar's content, as plain data: the label, the session price for the
+		 * card ("n/a" when unpriced, null before any turn) and the plan windows that
+		 * Claude reports, rounded.
 		 */
 		function barSegments({ stats, snapshot }) {
 			const cost = stats ? (stats.costUsd === null ? "n/a" : `$${stats.costUsd.toFixed(4)}`) : null;
@@ -101,7 +102,7 @@ window.__ModuleLoader__.load({
 						return { key, label, title, percent: Math.round(raw), tone: raw >= 90 ? "danger" : raw >= 70 ? "warn" : "", resetsAt: snapshot.windows[key].resetsAt };
 					})
 				: [];
-			return { cost, windows };
+			return { label: "Claude", cost, windows };
 		}
 
 		const usageResetIn = (iso) => {
@@ -133,8 +134,8 @@ window.__ModuleLoader__.load({
 				);
 
 			/**
-			 * One composer line: session price, then the 5h and weekly windows. Click
-			 * to expand the /usage-style card with the token and cache detail.
+			 * One composer line: the Claude label, then the 5h and weekly rings. Click
+			 * to expand the card with the session price and token detail.
 			 */
 			function ClaudeBar({ useProjection }) {
 				const stats = useProjection("claudeSessionStats");
@@ -157,10 +158,9 @@ window.__ModuleLoader__.load({
 					};
 				}, []);
 				const bar = barSegments({ stats, snapshot });
-				if (bar.cost === null && bar.windows.length === 0) return null;
+				if (bar.windows.length === 0) return null;
 
-				const items = [];
-				if (bar.cost !== null) items.push(h("span", { key: "cost" }, bar.cost));
+				const items = [h("span", { key: "label" }, h("span", { style: { color: "#d97757", marginRight: 4 } }, "●"), bar.label)];
 				for (const w of bar.windows) {
 					items.push(h("span", { key: w.key, style: { color: TONE_COLOR[w.tone] } }, h(Ring, { percent: w.percent, tone: w.tone }), `${w.label} ${w.percent}%`));
 				}

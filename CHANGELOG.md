@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.4] - 2026-10-30
+
+### Changed
+- composer 用量条改为与 OpenCode Go 插件一致的样式：行首为 `● Claude`，随后是 5 小时与每周两个环形进度，点击展开详情卡。会话价格移入详情卡；没有套餐窗口（如 API key）时不显示该条。
+
 ## [0.15.3] - 2026-10-30
 
 ### Fixed

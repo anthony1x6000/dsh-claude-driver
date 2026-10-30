@@ -19,7 +19,7 @@ const sandbox = {
   requestAnimationFrame: () => {},
 }
 vm.runInNewContext(source, sandbox, { filename: 'client/client.js' })
-const fakeRequire = () => ({ createElement: () => null, useState: (v) => [v, () => {}], useEffect() {}, useRef: () => ({ current: null }) })
+const fakeRequire = () => ({ createPortal: () => null, createElement: () => null, useState: (v) => [v, () => {}], useEffect() {}, useRef: () => ({ current: null }) })
 const { barSegments: barSegmentsInSandbox } = sandbox.registration.factory(fakeRequire)
 // Results are built in the sandbox realm; copy them out so deepEqual compares plain data.
 const barSegments = (input) => JSON.parse(JSON.stringify(barSegmentsInSandbox(input)))
@@ -62,4 +62,30 @@ test('a window that is nearly used up is flagged, a fresh one is not', () => {
       ['Week', 'warn'],
     ],
   )
+})
+
+test('the bar only shows for a Claude session that has plan windows', () => {
+  assert.equal(barSegments({ stats: { costUsd: 1 }, snapshot: { ok: true, windows: windows() } }).visible, true)
+  assert.equal(barSegments({ stats: null, snapshot: { ok: true, windows: windows() } }).visible, false, 'a session with no Claude turns must not carry a Claude bar')
+  assert.equal(barSegments({ stats: { costUsd: 1 }, snapshot: { ok: false } }).visible, false)
+})
+
+test('the bar sits inline beside other dock meters instead of taking a row of its own', () => {
+  assert.doesNotMatch(source, /width:\s*"100%"/, 'a full-width block pushes the OpenCode Go meter out of line')
+  assert.doesNotMatch(source, /position:\s*"absolute"/, 'the card must not be positioned inside the dock')
+  assert.match(source, /createPortal/, 'the card is portalled to body like the OpenCode Go card')
+  assert.match(source, /position:fixed/, 'the card is fixed-positioned and clamped to the viewport')
+  assert.match(source, /data-composer-stat/, 'dock meters are marked like the shipped ones')
+})
+
+test('every colour comes from DSW tokens that exist, so the card is never transparent', () => {
+  assert.doesNotMatch(source, /--dsw-alias-surface-elevated/, 'that token does not exist; the card rendered see-through')
+  assert.match(source, /--dsw-specific-menu/)
+  assert.doesNotMatch(source, /#[0-9a-f]{6}/i, 'no hard-coded hex colours, they break dark/light themes')
+})
+
+test('the dock id and order cannot collide with the OpenCode Go meter (order 2)', () => {
+  const order = Number(/[{,\s]order:\s*(\d+)/.exec(source)?.[1])
+  assert.ok(order > 2, `order ${order} must sort after the OpenCode Go meter`)
+  assert.match(source, /id:\s*"claude-driver-bar"/)
 })

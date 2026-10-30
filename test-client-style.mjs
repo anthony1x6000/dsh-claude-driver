@@ -55,8 +55,8 @@ assert.ok(registration, "bundle must register through __ModuleLoader__.load");
 assert.equal(registration.id, pkg.name, "registration id must equal the package name (host derives entry.id from it)");
 
 const fakeRequire = (id) => {
-	assert.equal(id, "react", "client bundle may only require react");
-	return { createElement: () => null, useState: (v) => [v, () => {}], useEffect: () => {} };
+	assert.ok(id === "react" || id === "react-dom", "client bundle may only require react and react-dom");
+	return { createPortal: () => null, createElement: () => null, useState: (v) => [v, () => {}], useEffect: () => {} };
 };
 const exportsObj = registration.factory(fakeRequire);
 assert.equal(typeof exportsObj.apply, "function", "factory must return a cordis plugin (apply)");

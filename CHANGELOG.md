@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.5] - 2026-10-30
+
+### Fixed
+- composer 用量条与 OpenCode Go 条重叠、详情卡透明：改为同 Go 条一致的行内 pill（不再占满整行），详情卡经 portal 挂到 body、fixed 定位并限制在视口内，颜色全部取自 DSW 令牌（此前引用了不存在的 `--dsw-alias-surface-elevated`）。仅在已有 Claude 回合的会话中显示，其他模型的会话不再出现 Claude 条。
+
 ## [0.15.4] - 2026-10-30
 
 ### Changed

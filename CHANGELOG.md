@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.3] - 2026-10-30
+
+### Fixed
+- 套餐用量（5 小时 / 每周）在 composer 中始终为空。用量请求在回合的 `result` 到达后才发出，此时 SDK 已关闭查询，报 `Query closed before response received`。现在改为在查询仍打开时（每条顶层 assistant 消息）读取用量。
+
 ## [0.15.2] - 2026-10-30
 
 ### Fixed

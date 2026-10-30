@@ -89,8 +89,11 @@ test('the usage route serves the latest snapshot as JSON', async () => {
   assert.equal(JSON.parse(body).snapshot.windows.fiveHour.percent, 42)
 })
 
-test('a finished turn refreshes plan usage from the query that ran it', async () => {
-  const events = [{ type: 'result', subtype: 'success', is_error: false, session_id: 's', result: 'ok', usage: { input_tokens: 1, output_tokens: 1 } }]
+test('a turn refreshes plan usage from the query that ran it', async () => {
+  const events = [
+    { type: 'assistant', parent_tool_use_id: null, session_id: 's', message: { role: 'assistant', model: 'sonnet', content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 1, output_tokens: 1 } } },
+    { type: 'result', subtype: 'success', is_error: false, session_id: 's', result: 'ok', usage: { input_tokens: 1, output_tokens: 1 } },
+  ]
   const generator = (async function* () { for (const e of events) yield e })()
   generator[USAGE] = async () => ({ rate_limits_available: true, rate_limits: RATE_LIMITS })
   const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }
@@ -99,6 +102,30 @@ test('a finished turn refreshes plan usage from the query that ran it', async ()
     // drain the turn
   }
   await claudeUsage.idle()
+  assert.equal(claudeUsage.get().windows.fiveHour.percent, 42)
+})
+
+test('plan usage is read while the query is open, so the SDK does not reject it as closed', async () => {
+  let closed = false
+  const usage = async () => {
+    if (closed) throw new Error('Query closed before response received')
+    return { rate_limits_available: true, rate_limits: RATE_LIMITS }
+  }
+  const generator = (async function* () {
+    yield { type: 'system', subtype: 'init', session_id: 's', model: 'sonnet', tools: [], mcp_servers: [] }
+    yield { type: 'assistant', parent_tool_use_id: null, session_id: 's', message: { role: 'assistant', model: 'sonnet', content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 1, output_tokens: 1 } } }
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    closed = true
+    yield { type: 'result', subtype: 'success', is_error: false, session_id: 's', result: 'ok', usage: { input_tokens: 1, output_tokens: 1 } }
+  })()
+  generator[USAGE] = usage
+  const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }
+  const opts = { provider: 'claude-code', model: 'sonnet', messages: [{ role: 'user', content: [{ type: 'text', text: 'q' }] }] }
+  for await (const _chunk of streamClaudeChunks(ctx, opts, { resumeChain: false, autoLogin: false, queryImpl: () => generator })) {
+    // drain the turn
+  }
+  await claudeUsage.idle()
+  assert.equal(claudeUsage.get().error, undefined, 'usage request succeeded while the query was open')
   assert.equal(claudeUsage.get().windows.fiveHour.percent, 42)
 })
 

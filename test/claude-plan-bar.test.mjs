@@ -20,7 +20,9 @@ const sandbox = {
 }
 vm.runInNewContext(source, sandbox, { filename: 'client/client.js' })
 const fakeRequire = () => ({ createElement: () => null, useState: (v) => [v, () => {}], useEffect() {}, useRef: () => ({ current: null }) })
-const { barSegments } = sandbox.registration.factory(fakeRequire)
+const { barSegments: barSegmentsInSandbox } = sandbox.registration.factory(fakeRequire)
+// Results are built in the sandbox realm; copy them out so deepEqual compares plain data.
+const barSegments = (input) => JSON.parse(JSON.stringify(barSegmentsInSandbox(input)))
 
 const windows = (over = {}) => ({ fiveHour: { percent: 42, resetsAt: null }, weekly: { percent: 13.5, resetsAt: null }, ...over })
 

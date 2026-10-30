@@ -69,7 +69,7 @@ const slotCtx = {
 		register: (registration, Component) => ({ registration, Component }),
 	},
 };
-assert.deepEqual(exportsObj.inject, ["slots"], "dock entry needs the slots service");
+assert.equal(exportsObj.inject.join(","), "slots", "dock entry needs the slots service");
 exportsObj.apply(slotCtx);
 assert.equal(slotCalls[0]?.name, "conversation.composer.dock", "stats line must register into the composer dock");
 const dockEntry = slotCalls[0].build();

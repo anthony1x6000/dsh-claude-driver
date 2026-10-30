@@ -84,7 +84,7 @@ window.__ModuleLoader__.load({
 		const h = React.createElement;
 		const STATS_URL = "/claude-driver/api/session-stats";
 		const k = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
-		const money = (usd) => `$${usd.toFixed(4)}`;
+		const money = (usd) => (usd === null ? "n/a" : `$${usd.toFixed(4)}`);
 		const duration = (ms) => {
 			const total = Math.max(0, Math.round(ms / 1000));
 			return total < 60 ? `${total}s` : `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, "0")}s`;
@@ -123,7 +123,7 @@ window.__ModuleLoader__.load({
 				`${Math.round(cache.hitRate * 100)}% cached`,
 			].join(" · ");
 			const rows = [
-				`Total cost: ${money(stats.costUsd)}`,
+				`Total cost (est. from list prices): ${money(stats.costUsd)}`,
 				`Duration: API ${duration(stats.durationApiMs)} · wall ${duration(stats.durationMs)}`,
 				`Requests: ${stats.requests}`,
 				`Prompt cache: ${Math.round(cache.hitRate * 100)}% of input from cache · read ${k(cache.readTokens)} · write ${k(cache.writeTokens)}`,

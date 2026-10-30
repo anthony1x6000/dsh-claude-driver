@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.1] - 2026-10-30
+
+### Fixed
+- 压缩时报 `tool-pairing balance: tool/result at surface seq N has no matching tool-call (corrupt surface)`。工具卡的配对 `assistant/message` 写入失败时，驱动仍写入 `tool/result`，留下没有对应 tool-call 的孤儿结果。现在配对写入失败时只记 warn，工具照常执行，但不再写入结果。
+
 ## [0.15.0] - 2026-10-29
 
 ### Added

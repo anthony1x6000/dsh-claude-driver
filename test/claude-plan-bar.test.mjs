@@ -26,9 +26,10 @@ const barSegments = (input) => JSON.parse(JSON.stringify(barSegmentsInSandbox(in
 
 const windows = (over = {}) => ({ fiveHour: { percent: 42, resetsAt: null }, weekly: { percent: 13.5, resetsAt: null }, ...over })
 
-test('the bar shows the session price, then the 5-hour and weekly windows, rounded', () => {
+test('the bar leads with the Claude label, then the 5-hour and weekly windows, rounded', () => {
   const bar = barSegments({ stats: { costUsd: 0.00129 }, snapshot: { ok: true, windows: windows() } })
-  assert.equal(bar.cost, '$0.0013')
+  assert.equal(bar.label, 'Claude')
+  assert.equal(bar.cost, '$0.0013', 'the price stays in the detail card, not the line')
   assert.deepEqual(
     bar.windows.map(({ label, percent }) => [label, percent]),
     [

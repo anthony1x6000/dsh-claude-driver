@@ -82,7 +82,6 @@ window.__ModuleLoader__.load({
 
 		const React = require("react");
 		const h = React.createElement;
-		const STATS_URL = "/claude-driver/api/session-stats";
 		const k = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 		const money = (usd) => (usd === null ? "n/a" : `$${usd.toFixed(4)}`);
 		const duration = (ms) => {
@@ -95,25 +94,9 @@ window.__ModuleLoader__.load({
 		 * cost, API vs wall time and cache share; click to expand the /usage
 		 * breakdown. Renders nothing for sessions the driver never ran.
 		 */
-		function SessionStats({ useSession }) {
-			const sessionId = useSession((s) => s.id);
-			const running = useSession((s) => s.running);
-			const [stats, setStats] = React.useState(null);
+		function SessionStats({ useProjection }) {
 			const [open, setOpen] = React.useState(false);
-			React.useEffect(() => {
-				setStats(null);
-				if (!sessionId) return undefined;
-				let live = true;
-				fetch(`${STATS_URL}?sessionId=${encodeURIComponent(sessionId)}`)
-					.then((r) => (r.ok ? r.json() : null))
-					.then((s) => {
-						if (live) setStats(s);
-					})
-					.catch(() => {});
-				return () => {
-					live = false;
-				};
-			}, [sessionId, running]);
+			const stats = useProjection("claudeSessionStats");
 			if (!stats) return null;
 			const cache = stats.cache;
 			const summary = [

@@ -1,7 +1,7 @@
 // Unit tests (no network, no SDK spawn) for the two 2026-08-20 improvements:
 //   A. cross-model history compatibility — every bridged tool/call card is
-//      paired with an assistant/message carrying the tool-call block
-//      (surfaceOp 'append', empty sourceEventSeqs), so the derived history
+//      preceded by an assistant/message carrying the tool-call block
+//      (surfaceOp 'append', no sourceEventSeqs), so the derived history
 //      never contains orphan tool-results after a provider switch;
 //   B. resume-chain hygiene — compaction/summary drops the session's resume
 //      mapping, and the /claude-fresh command drops it on demand.
@@ -25,6 +25,9 @@ function mockSession(seed = []) {
       return events
     },
     append(type, data, opts) {
+      if (type === 'assistant/message' && opts && 'sourceEventSeqs' in opts) {
+        throw new Error('assistant/message embeds its source stream and cannot carry sourceEventSeqs')
+      }
       const event = { type, seq: events.length, time: 1, data, ...(opts ?? {}) }
       events.push(event)
       return event
@@ -32,6 +35,19 @@ function mockSession(seed = []) {
   }
   for (const [type, data, opts] of seed) session.append(type, data, opts)
   return session
+}
+
+// The load-time rule (dsh-session-format v3-to-v4 tool()): every tool/call must
+// follow an assistant/message that advertised its tool-call id, or the whole
+// session refuses to load ("has no advertised tool lifecycle").
+function assertToolCallsAdvertised(events) {
+  const advertised = new Set()
+  for (const event of events) {
+    if (event.type === 'assistant/message') {
+      for (const block of event.data.message.content) if (block.type === 'tool-call') advertised.add(block.id)
+    }
+    if (event.type === 'tool/call') assert.ok(advertised.has(event.data.callId), `tool/call ${event.data.callId} has no advertised tool lifecycle`)
+  }
 }
 
 // The surface invariant DSH's tool-pairing fold enforces: every tool/result
@@ -79,7 +95,7 @@ const toolSchemas = [
   assert.ok(typeof message.id === 'string' && message.id.length > 0, 'message carries an identity')
 }
 
-// --- A1: tool/call is immediately followed by the pairing assistant/message ---
+// --- A1: the pairing assistant/message is appended before the tool/call ----
 {
   const session = mockSession(openStepSeed)
   const ctx = mockBridgeCtx({
@@ -98,15 +114,16 @@ const toolSchemas = [
   const pairing = session.events.find((e) => e.type === 'assistant/message')
   const result = session.events.find((e) => e.type === 'tool/result')
   assert.ok(call && pairing && result, 'tool/call + assistant/message + tool/result all appended')
-  assert.equal(pairing.seq, call.seq + 1, 'pairing message directly follows the tool/call')
+  assert.equal(call.seq, pairing.seq + 1, 'tool/call directly follows the pairing message that advertises it')
+  assertToolCallsAdvertised(session.events)
   assert.ok(pairing.seq < result.seq, 'pairing message precedes the tool/result')
   // invariant fields: same open turn/step as the card
   assert.equal(pairing.data.turn, 1)
   assert.equal(pairing.data.step, 1)
-  // surface marker: append + EMPTY sourceEventSeqs (explicitly legal only for
-  // assistant/message — dsh-session assertProvenance)
+  // surface marker: append only. dsh-session rejects sourceEventSeqs on an
+  // assistant/message at append time, even when empty.
   assert.equal(pairing.surfaceOp, 'append')
-  assert.deepEqual(pairing.sourceEventSeqs, [], 'empty provenance rides the assistant/message')
+  assert.equal('sourceEventSeqs' in pairing, false, 'assistant/message carries no sourceEventSeqs')
   // message body: one tool-call block whose id/name/arguments mirror the
   // tool/call event exactly (raw JSON string arguments)
   const message = pairing.data.message
@@ -156,9 +173,10 @@ const toolSchemas = [
   const bridge = buildToolBridge(ctx, { provider: 'claude-code', tools: toolSchemas }, { nativeToolCards: true }, new AbortController())
   const reply = await bridge.handlers.get('pwsh')({ cmd: 'x' })
   assert.equal(reply.isError, false, 'tool execution unaffected')
-  assert.ok(session.events.some((e) => e.type === 'tool/call'), 'card still opened')
+  assert.equal(session.events.some((e) => e.type === 'tool/call'), false, 'no card without its surface pairing: the session would refuse to load')
   assert.ok(warns.some((w) => String(w).includes('pairing')), 'pairing failure logged as a warn')
   assert.equal(session.events.some((e) => e.type === 'tool/result'), false, 'no tool/result without its surface pairing call')
+  assertToolCallsAdvertised(session.events)
   assertNoOrphanToolResult(session.events)
 }
 

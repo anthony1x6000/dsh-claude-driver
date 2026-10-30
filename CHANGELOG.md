@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.2] - 2026-10-30
+
+### Fixed
+- 重启 DSH 后会话报 `stored log is corrupt: ... tool/call ... has no advertised tool lifecycle` 而无法加载。配对 `assistant/message` 因携带 `sourceEventSeqs: []` 被 dsh-session 拒绝，驱动只记 warn，工具卡却照常写入，于是 `tool/call` 没有任何已声明的 tool-call。现在配对消息不带 `sourceEventSeqs`，且先于 `tool/call` 写入；配对写入失败时不写工具卡，也不写结果。
+
 ## [0.15.1] - 2026-10-30
 
 ### Fixed

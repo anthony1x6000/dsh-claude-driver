@@ -40,15 +40,16 @@ test('durations sum across steps', () => {
   assert.equal(snap.durationApiMs, 1100)
 })
 
-test('requests and prompt cache hit share accumulate over the session', () => {
+test('requests are counted and cache totals come from the cumulative modelUsage', () => {
   const stats = createSessionStats()
   stats.recordRequest('dsh-1', { input_tokens: 100, cache_read_input_tokens: 900, cache_creation_input_tokens: 0 })
   stats.recordRequest('dsh-1', { input_tokens: 50, cache_read_input_tokens: 150, cache_creation_input_tokens: 0 })
   stats.recordResult('dsh-1', { type: 'result', total_cost_usd: 0, modelUsage: modelUsage(), duration_ms: 1, duration_api_ms: 1 })
   const snap = stats.snapshot('dsh-1')
   assert.equal(snap.requests, 2)
-  assert.equal(snap.cache.readTokens, 1050)
-  assert.equal(snap.cache.hitRate, 0.9)
+  assert.equal(snap.cache.readTokens, 900)
+  assert.equal(snap.cache.writeTokens, 200)
+  assert.equal(snap.cache.hitRate, 0.75)
 })
 
 test('sessions are isolated from each other', () => {

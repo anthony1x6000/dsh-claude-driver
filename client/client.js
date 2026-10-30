@@ -14,7 +14,7 @@
  */
 window.__ModuleLoader__.load({
 	id: "dsh-claude-driver",
-	factory: () => {
+	factory: (require) => {
 		var module = { exports: {} };
 
 		const css = [
@@ -80,8 +80,88 @@ window.__ModuleLoader__.load({
 			else document.addEventListener("DOMContentLoaded", start, { once: true });
 		}
 
+		const React = require("react");
+		const h = React.createElement;
+		const STATS_URL = "/claude-driver/api/session-stats";
+		const k = (n) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+		const money = (usd) => `$${usd.toFixed(4)}`;
+		const duration = (ms) => {
+			const total = Math.max(0, Math.round(ms / 1000));
+			return total < 60 ? `${total}s` : `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, "0")}s`;
+		};
+
+		/**
+		 * Composer stats line for Claude Code sessions: one compact line of
+		 * cost, API vs wall time and cache share; click to expand the /usage
+		 * breakdown. Renders nothing for sessions the driver never ran.
+		 */
+		function SessionStats({ useSession }) {
+			const sessionId = useSession((s) => s.id);
+			const running = useSession((s) => s.running);
+			const [stats, setStats] = React.useState(null);
+			const [open, setOpen] = React.useState(false);
+			React.useEffect(() => {
+				setStats(null);
+				if (!sessionId) return undefined;
+				let live = true;
+				fetch(`${STATS_URL}?sessionId=${encodeURIComponent(sessionId)}`)
+					.then((r) => (r.ok ? r.json() : null))
+					.then((s) => {
+						if (live) setStats(s);
+					})
+					.catch(() => {});
+				return () => {
+					live = false;
+				};
+			}, [sessionId, running]);
+			if (!stats) return null;
+			const cache = stats.cache;
+			const summary = [
+				"Claude Code",
+				money(stats.costUsd),
+				`API ${duration(stats.durationApiMs)} / wall ${duration(stats.durationMs)}`,
+				`${Math.round(cache.hitRate * 100)}% cached`,
+			].join(" · ");
+			const rows = [
+				`Total cost: ${money(stats.costUsd)}`,
+				`Duration: API ${duration(stats.durationApiMs)} · wall ${duration(stats.durationMs)}`,
+				`Requests: ${stats.requests}`,
+				`Prompt cache: ${Math.round(cache.hitRate * 100)}% of input from cache · read ${k(cache.readTokens)} · write ${k(cache.writeTokens)}`,
+				...stats.models.map(
+					(m) =>
+						`${m.model}: ${k(m.inputTokens)} in · ${k(m.outputTokens)} out · ${k(m.cacheReadTokens)} cache read · ${k(m.cacheWriteTokens)} cache write · ${money(m.costUsd)}`,
+				),
+			];
+			return h(
+				"div",
+				{ "data-claude-driver-stats": true, style: { width: "100%", fontSize: "12px", padding: "2px 12px" } },
+				h(
+					"button",
+					{
+						type: "button",
+						"aria-expanded": open,
+						onClick: () => setOpen(!open),
+						style: { background: "none", border: "none", padding: 0, cursor: "pointer", color: "inherit", font: "inherit" },
+					},
+					summary,
+				),
+				open
+					? h(
+							"div",
+							{ style: { marginTop: "4px", display: "flex", flexDirection: "column", gap: "2px" } },
+							rows.map((row) => h("div", { key: row }, row)),
+						)
+					: null,
+			);
+		}
+
 		module.exports.name = "claude-driver-client";
-		module.exports.apply = () => {};
+		module.exports.inject = ["slots"];
+		module.exports.apply = (ctx) => {
+			ctx.slots.inject("conversation.composer.dock", () =>
+				ctx.slots.register({ name: "conversation.composer.dock", id: "claude-driver-session-stats", order: 10 }, SessionStats),
+			);
+		};
 		return module.exports;
 	},
 });

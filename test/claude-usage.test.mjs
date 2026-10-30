@@ -89,8 +89,11 @@ test('the usage route serves the latest snapshot as JSON', async () => {
   assert.equal(JSON.parse(body).snapshot.windows.fiveHour.percent, 42)
 })
 
-test('a finished turn refreshes plan usage from the query that ran it', async () => {
-  const events = [{ type: 'result', subtype: 'success', is_error: false, session_id: 's', result: 'ok', usage: { input_tokens: 1, output_tokens: 1 } }]
+test('a turn refreshes plan usage from the query that ran it', async () => {
+  const events = [
+    { type: 'assistant', parent_tool_use_id: null, session_id: 's', message: { role: 'assistant', model: 'sonnet', content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 1, output_tokens: 1 } } },
+    { type: 'result', subtype: 'success', is_error: false, session_id: 's', result: 'ok', usage: { input_tokens: 1, output_tokens: 1 } },
+  ]
   const generator = (async function* () { for (const e of events) yield e })()
   generator[USAGE] = async () => ({ rate_limits_available: true, rate_limits: RATE_LIMITS })
   const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }

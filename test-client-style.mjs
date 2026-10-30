@@ -15,6 +15,7 @@ const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), 
 // --- package wiring ---
 assert.equal(pkg.dsh?.client?.platform, "web", "dsh.client.platform must be web");
 assert.equal(pkg.dsh?.client?.immediately, true, "style must apply at boot, not lazily");
+assert.deepEqual(pkg.dsh?.client?.inject, ["@deepseek-ai/dsh-client-ui-conversation"], "the stats dock needs the conversation client");
 assert.equal(pkg.exports?.["./client"], "./client/client.js", 'exports["./client"] must point at the bundle');
 assert.equal(pkg.exports?.["./cordis.patch.yml"], "./cordis.patch.yml", "adding exports must not break the bundle patch subpath");
 assert.equal(pkg.exports?.["."], "./lib/index.js", "root export must keep resolving the host half");
@@ -53,9 +54,27 @@ vm.runInNewContext(source, sandbox, { filename: "client/client.js" });
 assert.ok(registration, "bundle must register through __ModuleLoader__.load");
 assert.equal(registration.id, pkg.name, "registration id must equal the package name (host derives entry.id from it)");
 
-const exportsObj = registration.factory();
+const fakeRequire = (id) => {
+	assert.equal(id, "react", "client bundle may only require react");
+	return { createElement: () => null, useState: (v) => [v, () => {}], useEffect: () => {} };
+};
+const exportsObj = registration.factory(fakeRequire);
 assert.equal(typeof exportsObj.apply, "function", "factory must return a cordis plugin (apply)");
 assert.equal(typeof exportsObj.name, "string", "factory must return a cordis plugin (name)");
+
+const slotCalls = [];
+const slotCtx = {
+	slots: {
+		inject: (name, build) => slotCalls.push({ name, build }),
+		register: (registration, Component) => ({ registration, Component }),
+	},
+};
+assert.equal(exportsObj.inject.join(","), "slots", "dock entry needs the slots service");
+exportsObj.apply(slotCtx);
+assert.equal(slotCalls[0]?.name, "conversation.composer.dock", "stats line must register into the composer dock");
+const dockEntry = slotCalls[0].build();
+assert.equal(dockEntry.registration.name, "conversation.composer.dock");
+assert.equal(typeof dockEntry.Component, "function", "dock entry must render a component");
 
 assert.equal(styleTags.length, 1, "exactly one style tag injected at factory scope");
 const css = styleTags[0].textContent;
@@ -70,7 +89,7 @@ styleTags.length = 0;
 sandbox.document.querySelector = () => ({});
 registration = void 0;
 vm.runInNewContext(source, sandbox, { filename: "client/client.js" });
-registration.factory();
+registration.factory(fakeRequire);
 assert.equal(styleTags.length, 0, "second execution must not inject a duplicate style tag");
 
 console.log("test-client-style: all assertions passed");

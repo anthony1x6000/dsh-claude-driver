@@ -34,6 +34,17 @@ function mockSession(seed = []) {
   return session
 }
 
+// The surface invariant DSH's tool-pairing fold enforces: every tool/result
+// closes a tool-call that an earlier assistant/message put on the surface.
+function assertNoOrphanToolResult(events) {
+  let open = 0
+  for (const event of events) {
+    if (event.type === 'assistant/message') open += event.data.message.content.filter((block) => block.type === 'tool-call').length
+    if (event.type === 'tool/result') open -= 1
+    assert.ok(open >= 0, `tool/result at seq ${event.seq} has no matching tool-call`)
+  }
+}
+
 const openStepSeed = [
   ['turn/start', { turn: 1 }],
   ['step/start', { turn: 1, step: 1 }],
@@ -114,9 +125,10 @@ const toolSchemas = [
   assert.equal(result.data.message.toolCallId, block.id)
   // the tool/result still cites the tool/call event, not the pairing message
   assert.deepEqual(result.sourceEventSeqs, [call.seq])
+  assertNoOrphanToolResult(session.events)
 }
 
-// --- A2: pairing append failure degrades to warn; card + tool still work -----
+// --- A2: pairing append failure: tool still runs, no orphan tool/result -----
 {
   const warns = []
   const events = []
@@ -145,8 +157,9 @@ const toolSchemas = [
   const reply = await bridge.handlers.get('pwsh')({ cmd: 'x' })
   assert.equal(reply.isError, false, 'tool execution unaffected')
   assert.ok(session.events.some((e) => e.type === 'tool/call'), 'card still opened')
-  assert.ok(session.events.some((e) => e.type === 'tool/result'), 'card still closed')
   assert.ok(warns.some((w) => String(w).includes('pairing')), 'pairing failure logged as a warn')
+  assert.equal(session.events.some((e) => e.type === 'tool/result'), false, 'no tool/result without its surface pairing call')
+  assertNoOrphanToolResult(session.events)
 }
 
 // --- B1: clearResumeOnCompaction (injected map) ------------------------------

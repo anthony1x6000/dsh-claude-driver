@@ -14,8 +14,7 @@
  */
 window.__ModuleLoader__.load({
 	id: "dsh-claude-driver",
-	factory: () => {
-		var module = { exports: {} };
+	factory: (require) => {
 
 		const css = [
 			'[class*="_thinkBody"]{',
@@ -80,8 +79,110 @@ window.__ModuleLoader__.load({
 			else document.addEventListener("DOMContentLoaded", start, { once: true });
 		}
 
-		module.exports.name = "claude-driver-client";
-		module.exports.apply = () => {};
-		return module.exports;
+		const USAGE_ROUTE = "/claude-usage.json";
+		const USAGE_POLL_MS = 15000;
+		const USAGE_CSS = [
+			".cdu_root{position:relative}",
+			".cdu_pill{display:inline-flex;align-items:center;gap:8px;border:none;background:none;cursor:pointer;font:inherit;font-size:11px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums;padding:2px 6px;border-radius:var(--dsw-radius-sm)}",
+			".cdu_pill:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+			".cdu_card{position:absolute;bottom:calc(100% + 8px);right:0;min-width:220px;padding:10px 12px;border-radius:var(--dsw-radius-md);background:var(--dsw-alias-surface-elevated,#fff);box-shadow:0 6px 24px rgba(0,0,0,.18);font-size:12px;color:var(--dsw-alias-label-primary);z-index:20}",
+			".cdu_row{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-variant-numeric:tabular-nums}",
+			".cdu_muted{color:var(--dsw-alias-label-tertiary)}",
+			".cdu_warn{color:#b7791f}",
+			".cdu_danger{color:#c53030}",
+		].join("");
+		const usageTone = (percent) => (percent >= 90 ? "cdu_danger" : percent >= 70 ? "cdu_warn" : "");
+		const usageResetIn = (iso) => {
+			const minutes = Math.round((Date.parse(iso) - Date.now()) / 60000);
+			if (!Number.isFinite(minutes) || minutes <= 0) return "";
+			if (minutes < 60) return `${minutes}m`;
+			const hours = Math.floor(minutes / 60);
+			return hours < 48 ? `${hours}h ${minutes % 60}m` : `${Math.floor(hours / 24)}d ${hours % 24}h`;
+		};
+
+		/** Plan-usage meter in the composer dock: the 5h and weekly windows, with a click-open card. */
+		function mountUsageMeter(ctx, require) {
+			const React = require("react");
+			const h = React.createElement;
+			const PILL_WINDOWS = [["fiveHour", "5h"], ["weekly", "Week"]];
+			const CARD_WINDOWS = [["fiveHour", "5-hour window"], ["weekly", "Week window"], ["weeklySonnet", "Sonnet week"], ["weeklyOpus", "Opus week"]];
+
+			function UsageMeter() {
+				const [snapshot, setSnapshot] = React.useState(null);
+				const [open, setOpen] = React.useState(false);
+				React.useEffect(() => {
+					let alive = true;
+					const load = () =>
+						fetch(USAGE_ROUTE, { cache: "no-store", headers: { accept: "application/json" } })
+							.then((response) => response.json())
+							.then((payload) => {
+								if (alive && payload?.snapshot) setSnapshot(payload.snapshot);
+							})
+							.catch(() => {});
+					void load();
+					const timer = setInterval(load, USAGE_POLL_MS);
+					return () => {
+						alive = false;
+						clearInterval(timer);
+					};
+				}, []);
+				if (snapshot?.ok !== true) return null;
+				const windows = snapshot.windows ?? {};
+				const pills = PILL_WINDOWS.filter(([key]) => windows[key]);
+				if (pills.length === 0) return null;
+				const card = CARD_WINDOWS.filter(([key]) => windows[key]);
+				return h(
+					"div",
+					{ className: "cdu_root" },
+					h(
+						"button",
+						{ type: "button", className: "cdu_pill", title: "Claude plan usage", onClick: () => setOpen(!open) },
+						pills.map(([key, label]) => h("span", { key, className: usageTone(windows[key].percent) }, `${label} ${Math.round(windows[key].percent)}%`)),
+					),
+					open
+						? h(
+								"div",
+								{ className: "cdu_card" },
+								card.map(([key, label]) => {
+									const { percent, resetsAt } = windows[key];
+									const resetIn = usageResetIn(resetsAt);
+									return h(
+										"div",
+										{ key, className: "cdu_row" },
+										h("span", null, label),
+										h("span", { className: usageTone(percent) }, `${Math.round(percent)}%${resetIn ? ` · resets in ${resetIn}` : ""}`),
+									);
+								}),
+								snapshot.extra?.enabled
+									? h(
+											"div",
+											{ className: "cdu_row cdu_muted" },
+											h("span", null, "Extra usage"),
+											h("span", null, snapshot.extra.percent == null ? "on" : `${Math.round(snapshot.extra.percent)}%`),
+										)
+									: null,
+							)
+						: null,
+				);
+			}
+
+			ctx.effect(() => {
+				const tag = document.createElement("style");
+				tag.dataset.plugin = "dsh-claude-driver";
+				tag.dataset.pluginCss = "claude-usage-meter.css";
+				tag.textContent = USAGE_CSS;
+				document.head.appendChild(tag);
+				return () => tag.remove();
+			});
+			ctx.slots.inject("conversation.composer.dock", () =>
+				ctx.slots.register({ name: "conversation.composer.dock", id: "claude-usage", order: 3 }, UsageMeter),
+			);
+		}
+
+		return {
+			name: "claude-driver-client",
+			inject: ["slots"],
+			apply: (ctx) => mountUsageMeter(ctx, require),
+		};
 	},
 });

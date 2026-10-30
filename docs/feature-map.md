@@ -30,6 +30,7 @@ Status: **direct** · **bridged** (DSH runs it; Claude calls it) · **limited** 
 | Session resume / fork | direct | One Claude session per DSH session (resume chain); `/claude-fresh` resets it. |
 | Session title | bridged | DSH's title request runs on Claude as a one-shot (not on the user's chain). |
 | Token meter / context % | direct | Real per-request usage from Claude; context windows from Claude's model info. |
+| Plan usage meter (5h, weekly, Sonnet/Opus, extra usage) | direct | Claude's own `usage` control request on the turn's live query, refreshed after each turn; shown in the composer dock. API-key sessions show nothing. |
 | `/export`, `/feedback`, session log, telemetry, settings UI, sidebar, terminal, file browser | n/a | DSH-side features over the DSH session log; they work unchanged because every Claude turn is recorded as DSH events. |
 
 ## Claude Code → DSH

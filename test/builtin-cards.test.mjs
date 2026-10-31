@@ -97,6 +97,19 @@ test('several tools in one assistant message each get a card, in order', async (
   assert.equal(results.length, 2)
 })
 
+// DSH's assistant/message settlement requires `stream` to be an array; the
+// token-meter and session-stats projections index it on every snapshot, so a
+// pairing message without one breaks history loading with
+// "Cannot read properties of undefined (reading 'length')".
+test('every assistant/message settlement carries a stream array', async () => {
+  const { session } = await run([toolUse('t1', 'Bash', { command: 'ls' }), toolResult('t1', 'x')])
+  const settlements = session.events.filter((e) => e.type === 'assistant/message')
+  assert.ok(settlements.length > 0)
+  for (const event of settlements) {
+    assert.ok(Array.isArray(event.data.stream), `assistant/message at seq ${event.seq} must carry a stream array`)
+  }
+})
+
 test('a tool that never returns is closed as interrupted when the turn ends, so no card spins forever', async () => {
   const { calls, results } = await run([toolUse('t1', 'Bash', { command: 'sleep 999' })])
   assert.equal(calls.length, 1)

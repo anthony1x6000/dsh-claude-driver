@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.6] - 2026-10-31
+
+### Fixed
+- 重新打开使用 Claude Code 驱动的会话时报 `Failed to load history: failed to project session … Cannot read properties of undefined (reading 'length')`。工具卡的配对 `assistant/message` 事件缺少 `stream` 字段，DSH 的 `tokenUsage` / `contextPressure` / `sessionStats` projection 在重放历史时读取 `stream.length` 崩溃。配对事件现在带上 `stream: []`，符合 assistant settlement 契约。
+
 ## [0.15.5] - 2026-10-30
 
 ### Fixed

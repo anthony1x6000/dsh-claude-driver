@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.15.6] - 2026-10-31
+
+### Fixed
+- 长会话/长时间空闲后历史加载报 `failed to project session … Cannot read properties of undefined (reading 'length')`：用量统计 projection 现在容忍缺字段/损坏的持久化记录与状态，不再抛错。
+
 ## [0.15.5] - 2026-10-30
 
 ### Fixed

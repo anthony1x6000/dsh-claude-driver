@@ -451,6 +451,7 @@ cd ~/.dsh/profiles/node_modules/dsh-claude-driver && npm i --no-save
 | `discoveryTimeoutMs` | `15000` | 单次发现超时，超时回落到别名列表，不会卡住选择器 |
 | `effort` | `medium` | 思考强度 |
 | `maxTurns` | `100` | 单步内部工具循环上限 |
+| `nice` | `19` | 每个 Claude CLI 进程（回合、预热、模型发现、原生压缩、子代理、登录、探针）的调度优先级；`19` 为最低优先级，让模型工作主动让出 CPU，`false` 使用宿主默认 |
 | `permissionMode` | `acceptEdits` | Claude Code 权限模式 |
 | `permissionMode` | _(unset)_ | 未设置时**跟随 DSH 会话权限**：`danger-full-access`→`bypassPermissions`，`workspace-write`→`acceptEdits`，`read-only`→`plan`。显式设置则始终优先 |
 | `followDshPermissions` | `true` | 设为 `false` 则固定使用旧默认 `acceptEdits`，不再读取 DSH 权限 |

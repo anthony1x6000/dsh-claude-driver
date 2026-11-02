@@ -2,6 +2,15 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.16.0] - 2026-11-02
+
+### Added
+- **所有 Claude CLI 进程默认以 nice 19 运行**（`nice`，取 0–19；`false` 使用宿主默认）。覆盖主回合、预热、模型发现、原生压缩、子代理、登录以及 `--version` / `auth status` 探针；Claude 自己启动的后台命令继承同一优先级。系统繁忙时模型工作主动让出 CPU，不再和其他进程抢资源。
+- **`CLAUDE_CODE_ENTRYPOINT=t3-code`**：应用 [pingdotgg/t3code#28410](https://github.com/pingdotgg/t3code/pull/28410) 的合并顺序——继承自宿主进程的 entrypoint 被 `t3-code` 覆盖，而 `~/.claude/settings.json` 或 managed settings 里的 `env.CLAUDE_CODE_ENTRYPOINT` 仍然优先。避免宿主自带的 entrypoint（例如 `claude-desktop`）带来的 SDK/CLI 行为差异。
+
+### Tests
+- `test/claude-process.test.mjs`、`test/priority-wiring.test.mjs`、`test/deps.test.mjs`：真实子进程的 nice 值、settings 覆盖顺序、主回合/发现/子代理的 spawn hook，以及安装校验与探针的 nice + entrypoint。
+
 ## [0.15.6] - 2026-10-31
 
 ### Fixed

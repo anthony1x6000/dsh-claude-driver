@@ -12,6 +12,7 @@ import {
   CLAUDE_ENTRYPOINT,
   LOWEST_PRIORITY,
   claudeProcessEnv,
+  lowPrioritySpawn,
   lowerPriority,
   normalizeNice,
   readClaudeSettingsEnv,
@@ -22,6 +23,11 @@ const temp = (prefix) => mkdtempSync(join(tmpdir(), `claude-${prefix}-`))
 const writeSettings = (dir, env, file = 'settings.json') =>
   writeFileSync(join(dir, file), JSON.stringify({ env }))
 const missingSettings = () => join(temp('missing'), 'settings.json')
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} did not finish in ${ms}ms`)), ms)),
+  ])
 
 test('nice defaults to 19 and clamps to the unprivileged range', () => {
   assert.equal(CLAUDE_ENTRYPOINT, 't3-code')
@@ -77,6 +83,24 @@ test('the SDK spawn shape keeps piped stdio, env, and the nice drop', async () =
     const [code] = await once(child, 'exit')
     assert.equal(code, 0)
     assert.equal(output, 'piped')
+  } finally {
+    child.kill('SIGKILL')
+  }
+})
+
+test('the SDK hook drains a chatty stderr so the CLI cannot block on a full pipe', async () => {
+  // The SDK's custom-spawn path reads stdin/stdout only; an unread stderr pipe
+  // fills at ~64 KB and blocks the CLI. Write well past that without reading it.
+  const child = lowPrioritySpawn(19)({
+    command: '/bin/sh',
+    args: ['-c', 'head -c 2000000 /dev/zero >&2; echo done'],
+    cwd: process.cwd(),
+    env: process.env,
+    signal: new AbortController().signal,
+  })
+  try {
+    const [code] = await withTimeout(once(child, 'exit'), 5000, 'chatty stderr')
+    assert.equal(code, 0)
   } finally {
     child.kill('SIGKILL')
   }

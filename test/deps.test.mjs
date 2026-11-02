@@ -5,7 +5,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileS
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { ensureClaudeCli, inspectDeps, platformPackages, privateCliBinary } from '../lib/deps.js'
+import { ensureClaudeCli, inspectDeps, platformPackages, privateCliBinary, runProcess } from '../lib/deps.js'
 import { locateClaude, resetClaudeExecutableCache, resolveClaudeExecutable } from '../lib/claude-executable.js'
 
 const tmp = (p) => mkdtempSync(join(tmpdir(), `deps-${p}-`))
@@ -280,4 +280,54 @@ test('waiting for another installer is bounded: it gives up as busy after the li
   const r = await ensureClaudeCli({ ...w, run: fakeRun(w, { createBinary: false }), waitForOtherMs: 150, pollMs: 20 })
   assert.equal(r.action, 'busy')
   assert.ok(Date.now() - t0 < 1500)
+})
+
+test('runProcess lowers the child priority when asked', async () => {
+  const r = await runProcess(process.execPath, [
+    '-e',
+    'setTimeout(() => console.log(require("node:os").getPriority(0)), 100)',
+  ], { nice: 19 })
+  assert.equal(r.code, 0)
+  assert.equal(r.stdout.trim(), '19')
+})
+
+test('inspectDeps runs the version and auth probes niced with the t3-code entrypoint', async () => {
+  const w = emptyWorld()
+  fakeBinary(join(w.env.PATH, 'claude'))
+  const calls = []
+  const run = async (cmd, args, options = {}) => {
+    calls.push({ cmd, args, options })
+    return {
+      code: 0,
+      stdout: args[0] === 'auth' ? JSON.stringify({ loggedIn: true }) : '9.9.9 (Claude Code)',
+      stderr: '',
+    }
+  }
+  const deps = await inspectDeps({ ...w, run, checkLogin: true, nice: 19 })
+  assert.equal(deps.claude.ok, true)
+  const probes = calls.filter((call) => call.cmd !== 'npm' && call.cmd !== 'pnpm')
+  assert.deepEqual(probes.map((call) => call.args[0]).sort(), ['--version', 'auth'])
+  for (const probe of probes) {
+    assert.equal(probe.options.nice, 19)
+    assert.equal(probe.options.env.CLAUDE_CODE_ENTRYPOINT, 't3-code')
+  }
+})
+
+test('the installed binary is verified niced with the t3-code entrypoint', async () => {
+  const w = emptyWorld()
+  const calls = []
+  const run = async (cmd, args, options = {}) => {
+    calls.push({ cmd, args, options })
+    if (cmd === 'npm') {
+      fakeBinary(privateCliBinary(w))
+      return { code: 0, stdout: '', stderr: '' }
+    }
+    return { code: 0, stdout: '9.9.9 (Claude Code)', stderr: '' }
+  }
+  const r = await ensureClaudeCli({ ...w, run, nice: 19 })
+  assert.equal(r.action, 'installed')
+  const probe = calls.find((call) => call.args[0] === '--version')
+  assert.ok(probe, 'the new binary is verified')
+  assert.equal(probe.options.nice, 19)
+  assert.equal(probe.options.env.CLAUDE_CODE_ENTRYPOINT, 't3-code')
 })

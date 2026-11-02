@@ -293,6 +293,7 @@ test('runProcess lowers the child priority when asked', async () => {
 
 test('inspectDeps runs the version and auth probes niced with the t3-code entrypoint', async () => {
   const w = emptyWorld()
+  w.env.CLAUDE_CONFIG_DIR = tmp('config')
   fakeBinary(join(w.env.PATH, 'claude'))
   const calls = []
   const run = async (cmd, args, options = {}) => {
@@ -315,6 +316,7 @@ test('inspectDeps runs the version and auth probes niced with the t3-code entryp
 
 test('the installed binary is verified niced with the t3-code entrypoint', async () => {
   const w = emptyWorld()
+  w.env.CLAUDE_CONFIG_DIR = tmp('config')
   const calls = []
   const run = async (cmd, args, options = {}) => {
     calls.push({ cmd, args, options })

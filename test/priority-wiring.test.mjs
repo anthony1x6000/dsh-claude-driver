@@ -3,10 +3,16 @@
 // the t3-code entrypoint. The turn and discovery paths share buildSdkOptions;
 // the subagent provider assembles its own options and is covered separately.
 import assert from 'node:assert/strict'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { buildSdkOptions, discoverClaudeModels } from '../lib/index.js'
 import { createClaudeCodeProvider } from '../lib/subagent-provider.js'
 import { CLAUDE_ENTRYPOINT } from '../lib/claude-process.js'
+
+// Keep the assertions deterministic when the host has its own Claude settings.
+process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'claude-wiring-'))
 
 const ctx = { get: () => undefined, logger: { info() {}, warn() {} } }
 const turn = {

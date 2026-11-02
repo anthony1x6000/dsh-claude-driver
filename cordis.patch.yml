@@ -16,5 +16,6 @@
       #   provider: claude-code       # the llm/stream route this adapter claims
       #   model: sonnet               # Claude model alias or full id
       #   maxTurns: 100
+      #   nice: 19                    # lowest CPU priority for every Claude CLI process
       #   permissionMode: acceptEdits
       #   proxy: http://127.0.0.1:7897

@@ -333,3 +333,40 @@ test('the installed binary is verified niced with the t3-code entrypoint', async
   assert.equal(probe.options.nice, 19)
   assert.equal(probe.options.env.CLAUDE_CODE_ENTRYPOINT, 't3-code')
 })
+
+test('deps probes keep the default nice when a caller passes nice: undefined', async () => {
+  const w = emptyWorld()
+  w.env.CLAUDE_CONFIG_DIR = tmp('config')
+  fakeBinary(join(w.env.PATH, 'claude'))
+  const calls = []
+  const run = async (cmd, args, options = {}) => {
+    calls.push({ cmd, args, options })
+    return {
+      code: 0,
+      stdout: args[0] === 'auth' ? JSON.stringify({ loggedIn: false }) : '9.9.9 (Claude Code)',
+      stderr: '',
+    }
+  }
+  await inspectDeps({ ...w, run, checkLogin: true, nice: undefined })
+  assert.ok(calls.length >= 2)
+  for (const call of calls) assert.equal(call.options.nice, 19, call.args.join(' '))
+})
+
+test('install verification keeps the default nice when a caller passes nice: undefined', async () => {
+  const w = emptyWorld()
+  w.env.CLAUDE_CONFIG_DIR = tmp('config')
+  const calls = []
+  const run = async (cmd, args, options = {}) => {
+    calls.push({ cmd, args, options })
+    if (cmd === 'npm') {
+      fakeBinary(privateCliBinary(w))
+      return { code: 0, stdout: '', stderr: '' }
+    }
+    return { code: 0, stdout: '9.9.9 (Claude Code)', stderr: '' }
+  }
+  const r = await ensureClaudeCli({ ...w, run, nice: undefined })
+  assert.equal(r.action, 'installed')
+  const probe = calls.find((call) => call.args[0] === '--version')
+  assert.ok(probe, 'the new binary is verified')
+  assert.equal(probe.options.nice, 19)
+})

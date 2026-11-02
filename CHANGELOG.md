@@ -2,6 +2,12 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.16.1] - 2026-11-02
+
+### Fixed
+- SDK 自定义 spawn hook 原本给 Claude CLI 保留了无人读取的 stderr 管道；CLI 的 stderr 超过约 64 KB 时管道写满会阻塞进程（表现为回合卡死）。现在 stderr 交给系统丢弃，不再填满管道。
+- 依赖探针在调用方显式传 `nice: undefined` 时会跳过优先级；现在回退到默认 19（`false` 仍可关闭）。`nice` 是尽力而为：受限宿主可能无法降低优先级，此时保持宿主默认。
+
 ## [0.16.0] - 2026-11-02
 
 ### Added

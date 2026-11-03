@@ -95,3 +95,13 @@ test('resolveModel exposes the discovered display name and effort levels', async
   assert.equal(info.context.contextWindow, 1_000_000)
   assert.deepEqual(info.reasoning.efforts.map((e) => e.id), eff5)
 })
+
+test('every model declares image input so DSH image reads are not refused', async () => {
+  const adapter = createClaudeCodeAdapter({ provider: 'claude-code' }, async () => REAL)
+  const info = await adapter.resolveModel('claude-code', 'sonnet')
+  assert.ok(info.inputModalities?.includes('image'))
+  const call = await adapter.prepareCall('claude-code', 'sonnet')
+  assert.ok(call.model.inputModalities?.includes('image'))
+  const unlisted = await adapter.resolveModel('claude-code', 'some-future-model')
+  assert.ok(unlisted.inputModalities?.includes('image'), 'unlisted ids stay image-capable')
+})

@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.16.3] - 2026-11-03
+
+### Fixed
+- 回合进行中无法 steer（含强制发送）：整个 Claude 工具循环只占 DSH 的一次 `llm/stream` 调用，DSH 认领 `inbox.nextStep` 的步骤边界要等回合结束才到，于是消息一直躺在队列里，只能点停止。现在驱动监听 `agent/inbox/inserted`，把 steer 立即认领（写入会话 `user/message`）并以 `priority: 'next'` 推入 CLI 的开放输入，CLI 在当前工具调用后并入正在进行的回合。回合已出 `result` 或已中止后到达的消息仍留在队列，由 DSH 照常处理。
+
 ## [0.16.2] - 2026-11-02
 
 ### Fixed

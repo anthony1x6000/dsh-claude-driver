@@ -129,3 +129,25 @@ test('no session means nothing is persisted and nothing throws', async () => {
   const ok = await persistUsageRecord(usageRecordFor(result(), 1), { session: undefined, append: async () => assert.fail('no append without a session') })
   assert.equal(ok, false)
 })
+
+test('a malformed persisted record never breaks the projection', () => {
+  const { apply, init } = claudeSessionStatsProjection
+  for (const data of [{}, { requests: 2 }, { models: null }, { models: [null, { model: 'x' }] }, 'junk', 7, []]) {
+    const state = apply(init(), { type: USAGE_RECORD, data })
+    assert.ok(Array.isArray(state.models), `models stays an array for ${JSON.stringify(data)}`)
+    assert.doesNotThrow(() => summarize(state))
+    assert.doesNotThrow(() => claudeSessionStatsProjection.stateSchema.parse(state))
+  }
+})
+
+test('summarize tolerates a state without a model list', () => {
+  assert.doesNotThrow(() => summarize({ turns: 1 }))
+  assert.doesNotThrow(() => summarize({ turns: 1, models: null }))
+})
+
+test('apply recovers from a corrupt prior state', () => {
+  const record = usageRecordFor(result(), 1)
+  const state = claudeSessionStatsProjection.apply({ turns: 'x' }, { type: USAGE_RECORD, data: record })
+  claudeSessionStatsProjection.stateSchema.parse(state)
+  assert.equal(state.requests, 1)
+})

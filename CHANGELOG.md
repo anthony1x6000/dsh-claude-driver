@@ -2,10 +2,35 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
-## [0.16.0] - 2026-11-03
+## [0.16.3] - 2026-11-03
 
 ### Fixed
 - 回合进行中无法 steer（含强制发送）：整个 Claude 工具循环只占 DSH 的一次 `llm/stream` 调用，DSH 认领 `inbox.nextStep` 的步骤边界要等回合结束才到，于是消息一直躺在队列里，只能点停止。现在驱动监听 `agent/inbox/inserted`，把 steer 立即认领（写入会话 `user/message`）并以 `priority: 'next'` 推入 CLI 的开放输入，CLI 在当前工具调用后并入正在进行的回合。回合已出 `result` 或已中止后到达的消息仍留在队列，由 DSH 照常处理。
+
+## [0.16.2] - 2026-11-02
+
+### Fixed
+- 长会话/长时间空闲后历史加载报 `failed to project session … Cannot read properties of undefined (reading 'length')`：用量统计 projection 现在容忍缺字段/损坏的持久化记录与状态，不再抛错。
+
+## [0.16.1] - 2026-11-02
+
+### Fixed
+- SDK 自定义 spawn hook 原本给 Claude CLI 保留了无人读取的 stderr 管道；CLI 的 stderr 超过约 64 KB 时管道写满会阻塞进程（表现为回合卡死）。现在 stderr 交给系统丢弃，不再填满管道。
+- 依赖探针在调用方显式传 `nice: undefined` 时会跳过优先级；现在回退到默认 19（`false` 仍可关闭）。`nice` 是尽力而为：受限宿主可能无法降低优先级，此时保持宿主默认。
+
+## [0.16.0] - 2026-11-02
+
+### Added
+- **所有 Claude CLI 进程默认以 nice 19 运行**（`nice`，取 0–19；`false` 使用宿主默认）。覆盖主回合、预热、模型发现、原生压缩、子代理、登录以及 `--version` / `auth status` 探针；Claude 自己启动的后台命令继承同一优先级。系统繁忙时模型工作主动让出 CPU，不再和其他进程抢资源。
+- **`CLAUDE_CODE_ENTRYPOINT=t3-code`**：应用 [pingdotgg/t3code#28410](https://github.com/pingdotgg/t3code/pull/28410) 的合并顺序——继承自宿主进程的 entrypoint 被 `t3-code` 覆盖，而 `~/.claude/settings.json` 或 managed settings 里的 `env.CLAUDE_CODE_ENTRYPOINT` 仍然优先。避免宿主自带的 entrypoint（例如 `claude-desktop`）带来的 SDK/CLI 行为差异。
+
+### Tests
+- `test/claude-process.test.mjs`、`test/priority-wiring.test.mjs`、`test/deps.test.mjs`：真实子进程的 nice 值、settings 覆盖顺序、主回合/发现/子代理的 spawn hook，以及安装校验与探针的 nice + entrypoint。
+
+## [0.15.6] - 2026-10-31
+
+### Fixed
+- 重新打开使用 Claude Code 驱动的会话时报 `Failed to load history: failed to project session … Cannot read properties of undefined (reading 'length')`。工具卡的配对 `assistant/message` 事件缺少 `stream` 字段，DSH 的 `tokenUsage` / `contextPressure` / `sessionStats` projection 在重放历史时读取 `stream.length` 崩溃。配对事件现在带上 `stream: []`，符合 assistant settlement 契约。
 
 ## [0.15.5] - 2026-10-30
 

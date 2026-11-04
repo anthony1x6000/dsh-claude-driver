@@ -2,6 +2,14 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.16.5] - 2026-11-04
+
+### Fixed
+- 工具调用进行中收到 steer 时，`user/message` 会被直接追加到会话表层，插在驱动自己写入的配对 `assistant/message`（带 tool-call）与 `tool/result` 之间。会话一旦改走 OpenAI 兼容路由（例如 opencode-go），这段历史就带出一条前面没有 `tool_calls` 的 `tool` 消息，上游每回合返回 400 `Messages with role 'tool' must be a response to a preceding message with 'tool_calls'`。现在 steer 仍立刻推入 CLI 的开放输入，但会话写入会等当前工具调用落定后再追加；回合结束时仍未配对的 steer 退回 `nextStep` 队列，由 DSH 在下一个步骤边界按序写入。
+
+### Tests
+- `test/steer.test.mjs`：工具卡片打开期间的 steer 必须落在 `tool/result` 之后；直到回合结束仍未配对的 steer 退回队列，而不是写进配对中间。
+
 ## [0.16.4] - 2026-11-04
 
 ### Fixed

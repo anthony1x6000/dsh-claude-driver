@@ -2,6 +2,11 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.16.4] - 2026-11-04
+
+### Fixed
+- 读图不再走 DSH 的 `read_image`。桥接工具的结果只以**文本**到达 Claude（图片块被压平成 JSON 元数据），模型看不到像素；现在 claude-code 回合不再把 `read_image` 桥给 Claude，改由 Claude 自带的 `Read` 读取图片文件并返回真正的图片块。DSH 的 `read_image` 卡片随之消失（`read` 卡片仍在），其他桥接工具的行为不变。
+
 ## [0.16.3] - 2026-11-03
 
 ### Fixed

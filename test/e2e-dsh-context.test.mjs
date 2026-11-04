@@ -54,11 +54,13 @@ test('e2e: Claude\'s duplicates of DSH features are absent from the real tool li
   const agent = { id: 'a' }
   const toolCtx = { logger: { info() {}, warn() {} }, get: (n) => (n === 'tools' ? { execute: async () => ({ content: [] }) } : n === 'agents' ? { currentInitiator: () => agent } : undefined) }
   const schema = (name) => ({ name, description: name, parameters: { type: 'object', properties: {} } })
-  const tools = ['exit_plan_mode', 'web_search', 'web_fetch', 'todo_write', 'schedule_create', 'bash'].map(schema)
+  const tools = ['exit_plan_mode', 'web_search', 'web_fetch', 'todo_write', 'schedule_create', 'read_image', 'bash'].map(schema)
   for await (const _ of streamClaudeChunks(toolCtx, { provider: 'claude-code', model: 'sonnet', messages: [user('hi')], tools }, { resumeChain: false, cwd: tmpdir(), model: 'sonnet', nativeToolCards: false })) void _
   const names = mainRequests().at(-1).tools.map((t) => t.name)
   for (const builtin of ['EnterPlanMode', 'ExitPlanMode', 'WebSearch', 'WebFetch', 'TodoWrite', 'CronCreate']) assert.ok(!names.includes(builtin), `${builtin} withheld`)
   assert.ok(names.includes('mcp__dsh-tools__exit_plan_mode'))
   assert.ok(names.includes('mcp__dsh-tools__bash'))
   assert.ok(names.includes('Bash'), 'Claude built-ins without a DSH owner stay')
+  assert.ok(!names.includes('mcp__dsh-tools__read_image'), 'DSH read_image is withheld: its image cannot cross the MCP boundary')
+  assert.ok(names.includes('Read'), 'Claude\'s own Read stays and reads the image')
 })

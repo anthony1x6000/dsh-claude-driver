@@ -61,6 +61,6 @@ test('e2e: Claude\'s duplicates of DSH features are absent from the real tool li
   assert.ok(names.includes('mcp__dsh-tools__exit_plan_mode'))
   assert.ok(names.includes('mcp__dsh-tools__bash'))
   assert.ok(names.includes('Bash'), 'Claude built-ins without a DSH owner stay')
-  assert.ok(!names.includes('mcp__dsh-tools__read_image'), 'DSH read_image is withheld: its image cannot cross the MCP boundary')
-  assert.ok(names.includes('Read'), 'Claude\'s own Read stays and reads the image')
+  assert.ok(names.includes('mcp__dsh-tools__read_image'), 'DSH read_image is bridged: its image crosses as image content')
+  assert.ok(names.includes('Read'), 'Claude\'s own Read stays as a second image path')
 })

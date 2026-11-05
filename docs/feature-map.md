@@ -25,7 +25,7 @@ Status: **direct** · **bridged** (DSH runs it; Claude calls it) · **limited** 
 | Background jobs (`job_list`/`job_output`/`job_kill`, jobs panel) | direct | Claude's own background tasks are mirrored as DSH `claude-task` jobs; `job_kill` stops the real task. Only real top-level background tasks are reported in the reply (not foreground commands, a call's own error, or a subagent's inner tasks); stopped, failed, deadline and interrupted endings each have their own wording. |
 | File attachments | direct | DSH file blocks become the same readable-path handle DSH gives every model; Claude reads them with its file tools. |
 | Image attachments | direct | Sent to Claude as native image blocks. |
-| `read_image` | direct | Claude's own `Read` reads the image file and returns the image itself. DSH's `read_image` is withheld from the bridge: a bridged tool result reaches Claude as text only, so its image block would arrive as JSON metadata instead of pixels. |
+| `read_image` | bridged | DSH `read_image` is bridged like any other tool, and its image block crosses the MCP boundary as image content: the model sees pixels, and the read renders as a DSH tool card. Claude's own `Read` stays as a second path. |
 | Ask-user questions | bridged | DSH `ask_user_question` card; Claude's own `AskUserQuestion` is withheld while it is offered. |
 | Setup (`dsh plugin add`, `/claude-doctor`) | direct | The CLI is installed automatically only when missing (see README); `/claude-doctor` reports every dependency and the login state. |
 | Session resume / fork | direct | One Claude session per DSH session (resume chain); `/claude-fresh` resets it. |

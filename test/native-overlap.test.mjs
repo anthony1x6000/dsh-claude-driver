@@ -2,9 +2,9 @@
 // truth on a claude-code turn: Claude's built-in duplicate is withheld so the
 // model uses the DSH tool (which DSH renders, persists and governs).
 //
-// The exception runs the other way — `read_image` is withheld in favour of
-// Claude's `Read`, because an image inside a bridged tool result cannot reach
-// the model as pixels (see the last two tests).
+// `read_image` is NOT one of the withheld built-ins: its image block crosses
+// the MCP boundary as image content, so Claude reads pixels through the DSH
+// tool (see test/image-tool-result.test.mjs).
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildSdkOptions, buildToolBridge, DSH_OWNED_BUILTINS } from '../lib/index.js'
@@ -56,38 +56,4 @@ test('preferDshTools:false keeps every Claude built-in', () => {
 
 test('the overlap table is exported for the feature map', () => {
   assert.equal(DSH_OWNED_BUILTINS.exit_plan_mode.join(','), 'EnterPlanMode,ExitPlanMode')
-})
-
-// The one overlap that runs the other way: an image block inside a bridged tool
-// result cannot cross the MCP boundary, so the DSH tool is withheld and Claude's
-// own Read (which returns the image itself) is the only way to look at an image.
-test('DSH read_image is not bridged: Claude\'s own Read is the image path', () => {
-  const options = { provider: 'claude-code', model: 'sonnet', messages: [], tools: ['read_image', 'bash'].map(schema) }
-  const controller = new AbortController()
-  const settings = { model: 'sonnet', nativeToolCards: false }
-  const bridge = buildToolBridge(ctx, options, settings, controller)
-  assert.ok(!bridge.bridgedNames.has('read_image'), 'read_image is not advertised to Claude')
-  assert.ok(!bridge.handlers.has('read_image'), 'no bridge handler executes it either')
-  assert.deepEqual(Object.keys(bridge.mcpServers['dsh-tools'].instance?._registeredTools ?? {}), ['bash'])
-  const sdk = buildSdkOptions(ctx, options, settings, { controller, model: 'sonnet', bridge })
-  assert.ok(!(sdk.disallowedTools ?? []).includes('Read'), 'Claude\'s Read stays: it returns the image itself')
-})
-
-test('a bridged result that carries an image would reach Claude as JSON text, not pixels', async () => {
-  // Pins the constraint the withholding above follows from: toSdkToolResult
-  // flattens every non-text block, so re-bridging read_image would hand Claude
-  // image metadata instead of the image.
-  const imageCtx = {
-    ...ctx,
-    get: (n) =>
-      n === 'tools'
-        ? { execute: async () => ({ content: [{ type: 'image', attachment: { attachmentId: 'sha256:abc', mediaType: 'image/png', bytes: 3, width: 1, height: 1 } }] }) }
-        : n === 'agents'
-          ? { currentInitiator: () => agent }
-          : undefined,
-  }
-  const bridge = buildToolBridge(imageCtx, { provider: 'claude-code', model: 'sonnet', messages: [], tools: [schema('screenshot')] }, { model: 'sonnet', nativeToolCards: false }, new AbortController())
-  const out = await bridge.handlers.get('screenshot')({})
-  assert.deepEqual(out.content.map((block) => block.type), ['text'])
-  assert.match(out.content[0].text, /"type":"image"/)
 })

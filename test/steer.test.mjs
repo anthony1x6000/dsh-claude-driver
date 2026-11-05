@@ -10,6 +10,7 @@ const userMessage = (id, text) => ({ id, role: 'user', source: { kind: 'user' },
 function fakeHost() {
   const nextStep = []
   const appended = []
+  const removedIds = []
   const listeners = new Map()
   const agent = {
     id: 'a1',
@@ -21,6 +22,7 @@ function fakeHost() {
         const at = nextStep.findIndex((m) => m.id === id)
         if (at < 0) return false
         nextStep.splice(at, 1)
+        removedIds.push(id)
         return true
       },
       append(target, message) {
@@ -63,7 +65,7 @@ function fakeHost() {
     record('assistant/message', { message: { role: 'assistant', content: [{ type: 'tool-call', id: callId, name: 'bash', arguments: '{}' }] } })
   const cardResult = (callId) => record('tool/result', { message: { role: 'tool', toolCallId: callId, content: [] } })
   const userAppends = () => appended.filter((event) => event.type === 'user/message')
-  return { ctx, agent, nextStep, appended, listeners, steer, record, card, cardResult, userAppends }
+  return { ctx, agent, nextStep, appended, removedIds, listeners, steer, record, card, cardResult, userAppends }
 }
 
 // Like the CLI: first message starts the turn; the turn only ends once the
@@ -125,7 +127,7 @@ const openRun = (gate) => {
   return { wait, release: () => release() }
 }
 
-test('a steer filed between a tool card and its result lands after the result', async () => {
+test('a steer filed between a tool card and its result stays pending, then lands after the result', async () => {
   const host = fakeHost()
   const seen = []
   const run = openRun()
@@ -142,19 +144,23 @@ test('a steer filed between a tool card and its result lands after the result', 
 
   assert.equal(seen.length, 2, 'the CLI input still receives the steer immediately')
   assert.equal(host.userAppends().length, 0, 'no surface append while the tool call has no result')
+  assert.deepEqual(host.removedIds, [], 'the steer is not claimed out of the inbox, so the UI keeps painting it as pending')
+  assert.deepEqual(host.nextStep.map((message) => message.id), ['m3'])
 
   host.cardResult('call-1')
   // The observer runs inside the closing append; the flush is a microtask.
   await new Promise((r) => setImmediate(r))
   assert.deepEqual(host.appended.map((event) => event.type), ['assistant/message', 'tool/result', 'user/message'])
   assert.equal(host.userAppends()[0].data.id, 'm3')
+  assert.deepEqual(host.removedIds, ['m3'], 'claimed exactly when the pair closes')
+  assert.deepEqual(host.nextStep, [], 'the claimed steer leaves the inbox so the loop does not deliver it twice')
 
   run.release()
   await finished
   assert.equal(host.listeners.size, 0, 'no listener left behind')
 })
 
-test('a steer still waiting for its pair at run end goes back to the inbox', async () => {
+test('a steer still waiting for its pair at run end is never claimed and stays in the inbox', async () => {
   const host = fakeHost()
   const seen = []
   const run = openRun()
@@ -171,7 +177,32 @@ test('a steer still waiting for its pair at run end goes back to the inbox', asy
   await finished
 
   assert.equal(host.userAppends().length, 0, 'never appended inside an open pair')
+  assert.deepEqual(host.removedIds, [], 'never claimed, so the next turn delivers the live queue row')
   assert.deepEqual(host.nextStep.map((message) => message.id), ['m4'], 'the loop delivers it at its own step boundary')
+})
+
+test('a steer removed from the queue before its tool closes is not recorded', async () => {
+  const host = fakeHost()
+  const seen = []
+  const run = openRun()
+  const finished = withTimeout(
+    (async () => {
+      for await (const _ of streamClaudeChunks(host.ctx, opts, { resumeChain: false, queryImpl: gatedQuery(seen, run.wait) })) void _
+    })(),
+    2000,
+  )
+  await new Promise((r) => setTimeout(r, 20))
+  host.card('call-3')
+  host.steer(userMessage('m5', 'never mind'))
+  assert.equal(host.agent.inbox.remove('m5'), true, 'the user removes the queued steer')
+
+  host.cardResult('call-3')
+  await new Promise((r) => setImmediate(r))
+  assert.equal(host.userAppends().length, 0, 'a withdrawn steer is not written to the transcript')
+
+  run.release()
+  await finished
+  assert.deepEqual(host.nextStep, [])
 })
 
 test('a message that arrives after the run finished stays in the inbox for the loop', async () => {

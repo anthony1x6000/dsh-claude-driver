@@ -2,6 +2,16 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)。变动记录于此。
 
+## [0.17.0] - 2026-11-05
+
+### Fixed
+- Claude 读不到图：桥接工具的结果被压成纯文本，图片块以 JSON 元数据到达模型；0.16.4 因此干脆不桥 `read_image`，指望 Claude 自带的 `Read` 代替。实测仍不行——模型看到的是 DSH 的 `read`/文本结果，拿不到像素。现在桥接结果整块转成 MCP 内容返回：文本照旧，`type:'image'` 块经 attachments 服务解析成 base64 后以 MCP image 内容送出，在 tool_result 里变回真正的图片块。`read_image` 重新桥给 Claude（卡片也回来了），Claude 自带的 `Read` 保留。
+- 图片无法解析（attachments 缺失、对象损坏）时退化成本地占位文本，工具调用本身不失败；纯文本与空结果的行为不变。
+
+### Tests
+- `test/image-tool-result.test.mjs`：`read_image` 必须被桥接；图片块必须以 `{type:'image', data, mimeType}` 出现在结果内容里（而不是 JSON 文本）；解析失败与 attachments 缺失时退化为文本；纯文本与空结果的输出不变。
+- `test/native-overlap.test.mjs` / `test/e2e-dsh-context.test.mjs`：更新为 `read_image` 出现在 Claude 的工具列表里。
+
 ## [0.16.6] - 2026-11-05
 
 ### Fixed

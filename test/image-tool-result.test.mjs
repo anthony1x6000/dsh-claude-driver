@@ -25,7 +25,7 @@ function bridgeFor(result, attachments) {
     logger: { info() {}, warn() {} },
     get: (name) =>
       name === 'tools'
-        ? { execute: async () => result }
+        ? { execute: async (batch) => ({ results: batch.calls.map((call) => ({ callId: call.id, result })), additionalContexts: [], concluded: false }) }
         : name === 'agents'
           ? { currentInitiator: () => agent }
           : name === 'attachments'

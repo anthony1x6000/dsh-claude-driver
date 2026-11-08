@@ -112,7 +112,19 @@ test('e2e: a DSH plugin tool is bridged, executed in DSH, and its result reaches
   const agent = { id: 'a1' }
   const ctxExtra = {
     get(name) {
-      if (name === 'tools') return { execute: async (call) => { executed.push(call); return { content: [{ type: 'text', text: `echo:${call.arguments.text}` }], isError: false } } }
+      if (name === 'tools') {
+        return {
+          execute: async (batch) => ({
+            results: batch.calls.map((call) => {
+              executed.push(call)
+              const text = `echo:${JSON.parse(call.arguments).text}`
+              return { callId: call.id, result: { content: [{ type: 'text', text }], isError: false } }
+            }),
+            additionalContexts: [],
+            concluded: false,
+          }),
+        }
+      }
       if (name === 'agents') return { currentInitiator: () => agent }
       return undefined
     },
@@ -120,7 +132,7 @@ test('e2e: a DSH plugin tool is bridged, executed in DSH, and its result reaches
   const tools = [{ name: 'fake_plugin_tool', description: 'Echo.', parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] } }]
   const chunks = await withTimeout(mount({ nativeToolCards: false }, ctxExtra).run({ tools, messages: [user('use the tool')] }), 90000, 'tool bridge turn')
   assert.equal(executed.length, 1, 'DSH tools.execute ran')
-  assert.deepEqual(executed[0].arguments, { text: 'hello' })
+  assert.deepEqual(JSON.parse(executed[0].arguments), { text: 'hello' })
   assert.match(textOf(chunks), /bridge-ok:echo:hello/)
   assert.equal(finish(chunks).reason.kind, 'stop')
 })

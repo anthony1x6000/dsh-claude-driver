@@ -71,7 +71,15 @@ function mockBridgeCtx({ session, executeImpl }) {
   return {
     logger: { info: () => {}, warn: () => {} },
     get(name) {
-      if (name === 'tools') return { execute: async (exec) => executeImpl(exec) }
+      if (name === 'tools') {
+        return {
+          execute: async (batch) => {
+            const [call] = batch.calls
+            const exec = { callId: call.id, name: call.name, arguments: JSON.parse(call.arguments), agent: batch.agent }
+            return { results: [{ callId: call.id, result: await executeImpl(exec) }], additionalContexts: [], concluded: false }
+          },
+        }
+      }
       if (name === 'agents') return { currentInitiator: () => agent }
       return undefined
     },
@@ -165,7 +173,15 @@ const toolSchemas = [
   const ctx = {
     logger: { info: () => {}, warn: (msg) => warns.push(msg) },
     get(name) {
-      if (name === 'tools') return { execute: async () => ({ content: [{ type: 'text', text: 'ok' }], isError: false }) }
+      if (name === 'tools') {
+        return {
+          execute: async (batch) => ({
+            results: batch.calls.map((call) => ({ callId: call.id, result: { content: [{ type: 'text', text: 'ok' }], isError: false } })),
+            additionalContexts: [],
+            concluded: false,
+          }),
+        }
+      }
       if (name === 'agents') return { currentInitiator: () => ({ id: 'pair-fail', session }) }
       return undefined
     },

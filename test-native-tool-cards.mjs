@@ -44,9 +44,11 @@ function mockCtx({ session, executeImpl }) {
     get(name) {
       if (name === 'tools')
         return {
-          execute: async (exec) => {
+          execute: async (batch) => {
+            const [call] = batch.calls
+            const exec = { callId: call.id, name: call.name, arguments: JSON.parse(call.arguments), agent: batch.agent }
             calls.push(exec)
-            return executeImpl(exec)
+            return { results: [{ callId: call.id, result: await executeImpl(exec) }], additionalContexts: [], concluded: false }
           },
         }
       if (name === 'agents') return { currentInitiator: () => agent }

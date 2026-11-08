@@ -15,6 +15,9 @@ const FAKE_TOOL = {
   },
 }
 
+// Mirrors the real ToolExecutor.execute contract (dsh-tools executeToolBatch):
+// it takes a batch `{ calls, signal, agent }` and returns `{ results }`
+// correlated by callId. A bare single-call object is a harness fault.
 function harness() {
   const executed = []
   const agent = { id: 'a1' }
@@ -23,9 +26,17 @@ function harness() {
     get(name) {
       if (name === 'tools') {
         return {
-          execute: async (call) => {
-            executed.push(call)
-            return { content: [{ type: 'text', text: `echo:${call.arguments.text}` }], isError: false }
+          execute: async (batch) => {
+            if (!Array.isArray(batch.calls)) throw new TypeError('batch.calls is not iterable')
+            return {
+              results: batch.calls.map((call) => {
+                executed.push({ call, agent: batch.agent })
+                const text = `echo:${JSON.parse(call.arguments).text}`
+                return { callId: call.id, result: { content: [{ type: 'text', text }], isError: false } }
+              }),
+              additionalContexts: [],
+              concluded: false,
+            }
           },
         }
       }
@@ -74,8 +85,8 @@ test('Claude calling the bridged tool executes it inside DSH and gets the result
   assert.ok(registered?.[FAKE_TOOL.name], 'SDK MCP server exposes the tool handler')
   const out = await registered[FAKE_TOOL.name].handler({ text: 'hello', times: 2 }, {})
   assert.equal(executed.length, 1, 'DSH tools.execute ran exactly once')
-  assert.equal(executed[0].name, FAKE_TOOL.name)
-  assert.deepEqual(executed[0].arguments, { text: 'hello', times: 2 })
+  assert.equal(executed[0].call.name, FAKE_TOOL.name)
+  assert.deepEqual(JSON.parse(executed[0].call.arguments), { text: 'hello', times: 2 })
   assert.equal(executed[0].agent, agent)
   assert.match(JSON.stringify(out), /echo:hello/)
   assert.notEqual(out.isError, true)
